@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { api, auth } from './api';
-import { Err } from './ui';
+import { Err, WAKE_HINT, useSlow } from './ui';
 import { LogoFull } from './Logo';
 
 export default function AuthScreen({ onAuthed, notice }) {
@@ -10,6 +10,7 @@ export default function AuthScreen({ onAuthed, notice }) {
   const [busy, setBusy] = useState(false);
   const set = (k, v) => setF((s) => ({ ...s, [k]: v }));
   const reg = mode === 'register';
+  const slow = useSlow(busy);
 
   const submit = async (e) => {
     e.preventDefault();
@@ -41,6 +42,7 @@ export default function AuthScreen({ onAuthed, notice }) {
           <input required type="password" minLength={reg ? 8 : undefined} maxLength="128" placeholder={reg ? 'Kata sandi (minimal 8 karakter)' : 'Kata sandi'} aria-label="Kata sandi"
             autoComplete={reg ? 'new-password' : 'current-password'} value={f.password} onChange={(e) => set('password', e.target.value)} />
           {notice && !err && <p className="note">{notice}</p>}
+          {busy && slow && <p className="note">{WAKE_HINT}</p>}
           <Err msg={err} />
           <button className="save" disabled={busy}>{busy ? 'Memproses…' : reg ? 'Buat akun' : 'Masuk'}</button>
         </form>

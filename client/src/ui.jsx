@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 export function Dialog({ open, onClose, children }) {
   const ref = useRef();
@@ -11,7 +11,21 @@ export function Dialog({ open, onClose, children }) {
 }
 
 export const Err = ({ msg }) => (msg ? <p className="note out" role="alert">{msg}</p> : null);
-export const Loading = ({ err }) => <p className="note" role="status">{err || 'Memuat…'}</p>;
+// true kalau `active` sudah berlangsung lebih dari `ms` (server gratis di Render bisa butuh sekitar satu menit untuk bangun)
+export function useSlow(active, ms = 6000) {
+  const [slow, setSlow] = useState(false);
+  useEffect(() => {
+    if (!active) { setSlow(false); return undefined; }
+    const t = setTimeout(() => setSlow(true), ms);
+    return () => clearTimeout(t);
+  }, [active, ms]);
+  return slow;
+}
+export const WAKE_HINT = 'Server sedang bangun dari tidur (paket gratis), tunggu sekitar satu menit.';
+export function Loading({ err }) {
+  const slow = useSlow(!err);
+  return <p className="note" role="status">{err || 'Memuat…'}{!err && slow && ` ${WAKE_HINT}`}</p>;
+}
 export const Field = ({ label, children }) => <label className="lb">{label}{children}</label>;
 
 // Efek miring 3D mengikuti kursor (hanya mouse, mati jika pengguna memilih kurangi gerakan)

@@ -15,7 +15,7 @@ budget, tren, pola pengeluaran per hari dalam seminggu, target tabungan, dan eks
    cd server
    cp .env.example .env     # isi DATABASE_URL dan JWT_SECRET (cara membuatnya ada di dalam file)
    npm install
-   npm run db:init          # membuat tabel (aman dijalankan ulang)
+   npm run db:init          # membuat tabel (aman dijalankan ulang; atau set AUTO_DB_INIT=true agar otomatis saat server menyala)
    npm run dev              # http://localhost:4000
    ```
 3. Frontend:
@@ -47,18 +47,11 @@ budget, tren, pola pengeluaran per hari dalam seminggu, target tabungan, dan eks
 Jalankan `npm run db:init` (menambah kolom `user_id`), daftar akun lewat aplikasi, lalu
 `npm run db:claim -- email@anda.com` untuk menyerahkan data lama ke akun itu. Akun harus masih kosong.
 
-## Deploy (project ke-2, terpisah dari project pertama)
+## Deploy
 
-| Bagian | Platform | Pengaturan |
-|---|---|---|
-| Database | Neon | Buat project atau database baru. Jalankan `npm run db:init` sekali dengan `DATABASE_URL` Neon. |
-| Backend | Render (Web Service) | Root Directory `server`, Build `npm install`, Start `npm start`. Env: `DATABASE_URL`, `JWT_SECRET`, `CLIENT_ORIGIN` (URL Vercel). |
-| Frontend | Vercel | Root Directory `client`, framework Vite. Env: `VITE_API_URL` (URL Render). |
-
-Beri nama berbeda dari project pertama, misalnya `befince-api` dan `befince-web`.
-Urutan: Neon, lalu Render, lalu Vercel, lalu isi `CLIENT_ORIGIN` di Render dengan URL Vercel. Setelah mendaftar, set
-`ALLOW_REGISTRATION=false`. Cek paket gratis Render: service bisa "tidur" saat lama tidak dipakai, sehingga permintaan
-pertama lebih lambat.
+Langkah lengkap Neon, Render, dan Vercel (beserta daftar periksa dan pemecahan masalah) ada di **[DEPLOY.md](DEPLOY.md)**.
+Ringkasnya: kode ke GitHub, buat database di Neon, deploy backend ke Render lewat `render.yaml`, deploy frontend ke Vercel
+(Root Directory `client`, variabel `VITE_API_URL`), lalu isi `CLIENT_ORIGIN` di Render dengan alamat Vercel.
 
 ## Catatan desain
 
@@ -70,7 +63,7 @@ pertama lebih lambat.
 
 ## Endpoint
 
-Tanpa login: `GET /api/health`, `POST /api/auth/register`, `POST /api/auth/login`.
+Tanpa login: `GET /api/health`, `GET /api/health/db`, `POST /api/auth/register`, `POST /api/auth/login`.
 Perlu login: `GET /api/auth/me`, `PUT /api/auth/password`, `GET /api/meta`, `GET|POST /api/transactions`, `PUT|DELETE /api/transactions/:id`,
 `GET|POST /api/wallets`, `POST /api/transfers`, `GET|PUT /api/budgets`, `GET /api/budgets/suggest`,
 `GET|POST /api/goals`, `POST /api/goals/:id/deposits`, `GET /api/reports/monthly|trend|weekday`,

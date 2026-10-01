@@ -1,0 +1,27 @@
+# Blueprint Render untuk backend beFince. Cara pakai ada di DEPLOY.md.
+services:
+  - type: web
+    name: befince-api
+    runtime: node
+    region: singapore
+    plan: free
+    rootDir: server
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: DATABASE_URL      # string koneksi dari Neon (diisi saat membuat Blueprint)
+        sync: false
+      - key: CLIENT_ORIGIN     # alamat Vercel, tanpa garis miring di akhir (diisi sementara dulu, lihat DEPLOY.md)
+        sync: false
+      - key: JWT_SECRET        # dibuat otomatis oleh Render
+        generateValue: true
+      - key: AUTO_DB_INIT      # membuat tabel otomatis; boleh diubah ke false setelah deploy pertama berhasil
+        value: "true"
+      - key: ALLOW_REGISTRATION
+        value: "true"          # ubah ke false setelah akunmu dibuat
+      - key: APP_TZ
+        value: Asia/Jakarta
