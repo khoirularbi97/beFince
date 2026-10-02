@@ -15,7 +15,7 @@ export default function TxList({ items, actions, pendingId, onEdit, onDelete }) 
           <div>
             {x.category || 'Tanpa kategori'}
             <small>
-              {x.wallet} · {x.note || 'Tanpa catatan'}
+              {x.time && <>{x.time} · </>}{x.wallet} · {x.note || 'Tanpa catatan'}
               {actions && <>
                 {' · '}<button className="lnk" onClick={() => onEdit(x)}>Ubah</button>
                 <button className="lnk d" onClick={() => onDelete(x)}>{pendingId === x.id ? 'Yakin hapus?' : 'Hapus'}</button>

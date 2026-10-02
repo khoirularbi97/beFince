@@ -14,8 +14,8 @@ export async function sendCsv(res, uid, month) {
     const t = String(v ?? '');
     return /[;"\r\n]/.test(t) ? `"${t.replaceAll('"', '""')}"` : t;
   };
-  const lines = [['Tanggal', 'Jenis', 'Kategori', 'Dompet', 'Catatan', 'Nominal']].concat(
-    rows.map((r) => [r.date, r.type === 'income' ? 'Pemasukan' : 'Pengeluaran', r.category ?? 'Tanpa kategori', r.wallet, r.note, r.amount]));
+  const lines = [['Tanggal', 'Jam', 'Jenis', 'Kategori', 'Dompet', 'Catatan', 'Nominal']].concat(
+    rows.map((r) => [r.date, r.time ?? '', r.type === 'income' ? 'Pemasukan' : 'Pengeluaran', r.category ?? 'Tanpa kategori', r.wallet, r.note, r.amount]));
   res.setHeader('Content-Type', 'text/csv; charset=utf-8');
   res.setHeader('Content-Disposition', `attachment; filename="laporan-${month}.csv"`);
   res.send('\uFEFF' + lines.map((l) => l.map(cell).join(';')).join('\r\n'));

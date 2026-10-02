@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { api } from '../api';
 import { useApi } from '../hooks';
 import TxList from '../TxList';
+import ImportFlow from './Import';
 import { Err, Loading } from '../ui';
 import { daysIn, rp } from '../util';
 
@@ -11,6 +12,7 @@ export default function Transaksi({ month, ver, meta, refresh, openTx }) {
   const [qd, setQd] = useState('');
   const [pend, setPend] = useState(null);
   const [err, setErr] = useState('');
+  const [imp, setImp] = useState(false);
   const set = (k, v) => setF((s) => ({ ...s, [k]: v }));
 
   useEffect(() => { const [a, b] = bounds(); setF((s) => ({ ...s, from: a, to: b })); }, [month]); // eslint-disable-line
@@ -26,9 +28,14 @@ export default function Transaksi({ month, ver, meta, refresh, openTx }) {
     try { await api.delTx(x.id); setPend(null); refresh(); } catch (e) { setErr(e.message); }
   };
 
+  if (imp) {
+    return <div className="page" id="p-impor"><ImportFlow meta={meta} onClose={() => setImp(false)} onDone={() => { setImp(false); refresh(); }} /></div>;
+  }
+
   return (
     <div className="page" id="p-transaksi">
       <section className="card" aria-label="Cari dan filter">
+        <div className="hd"><h2>Cari dan filter</h2><button onClick={() => setImp(true)}>Impor mutasi</button></div>
         <input type="search" placeholder="Cari catatan atau kategori" aria-label="Cari transaksi" value={f.q} onChange={(e) => set('q', e.target.value)} />
         <div className="frow">
           <select aria-label="Kategori" value={f.category_id} onChange={(e) => set('category_id', e.target.value)}>

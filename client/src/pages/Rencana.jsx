@@ -4,7 +4,7 @@ import { useApi } from '../hooks';
 import { PaceChart } from '../charts';
 import { BudgetDialog, DepositDialog, GoalDialog } from '../dialogs';
 import { Err, Loading } from '../ui';
-import { curMonth, daysIn, jt, monthShort, monthsLeft, rp, today } from '../util';
+import { curMonth, dayLabel, daysIn, jt, monthShort, monthsLeft, rp, today } from '../util';
 
 export default function Rencana(props) {
   const [view, setView] = useState('budget');
@@ -96,8 +96,9 @@ function BudgetSection({ month, ver, refresh }) {
 /* ================= Target tabungan ================= */
 function GoalsSection({ ver, refresh, meta }) {
   const res = useApi(() => api.goals(), [ver]);
-  const [adding, setAdding] = useState(false);
-  const [dep, setDep] = useState(null);
+  const [form, setForm] = useState(null); // null = tertutup, { goal: null } = target baru, { goal } = ubah
+  const [dep, setDep] = useState(null); // { goal, deposit }: deposit null = setoran baru
+  const [hist, setHist] = useState(null); // id target yang riwayatnya terbuka
   const [pend, setPend] = useState(null);
   const [err, setErr] = useState('');
   const goals = res.data;
@@ -112,7 +113,7 @@ function GoalsSection({ ver, refresh, meta }) {
   return (
     <>
       <section className="card" aria-label="Ringkasan tabungan">
-        <div className="hd"><h2>Target tabungan</h2><button onClick={() => setAdding(true)}>Target baru</button></div>
+        <div className="hd"><h2>Target tabungan</h2><button onClick={() => setForm({ goal: null })}>Target baru</button></div>
         {goals.length ? (
           <>
             <div className="lbl2">Terkumpul {rp(S)} dari {rp(T)}</div>
@@ -146,10 +147,13 @@ function GoalsSection({ ver, refresh, meta }) {
                 <div className="bar2"><i style={{ width: Math.min(pct, 100) + '%', background: done ? 'var(--in)' : 'var(--w2)' }} /></div>
                 <div className="gf"><span>{rp(g.saved)}</span><span>dari {rp(g.target)}</span></div>
                 <p className="note">{hint}</p>
-                <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginTop: 8 }}>
-                  <button className="ghost" onClick={() => setDep(g)}>Setor</button>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center', marginTop: 8 }}>
+                  <button className="ghost" onClick={() => setDep({ goal: g, deposit: null })}>Setor</button>
+                  <button className="ghost" onClick={() => setForm({ goal: g })}>Ubah</button>
+                  <button className="ghost" aria-expanded={hist === g.id} onClick={() => setHist(hist === g.id ? null : g.id)}>Riwayat ({g.deposits})</button>
                   <button className="lnk d" onClick={() => del(g)}>{pend === g.id ? 'Yakin hapus?' : 'Hapus'}</button>
                 </div>
+                {hist === g.id && <DepositHistory goal={g} ver={ver} refresh={refresh} onEdit={(deposit) => setDep({ goal: g, deposit })} />}
               </div>
             );
           })}
@@ -158,8 +162,44 @@ function GoalsSection({ ver, refresh, meta }) {
       )}
       <p className="note">Setoran mengurangi saldo dompet yang dipilih, tapi tidak dihitung sebagai pengeluaran.</p>
 
-      <GoalDialog open={adding} onClose={() => setAdding(false)} onSaved={() => { setAdding(false); refresh(); }} />
-      <DepositDialog goal={dep} wallets={meta.wallets} onClose={() => setDep(null)} onSaved={() => { setDep(null); refresh(); }} />
+      <GoalDialog open={!!form} goal={form?.goal} onClose={() => setForm(null)} onSaved={() => { setForm(null); refresh(); }} />
+      <DepositDialog goal={dep?.goal} deposit={dep?.deposit} wallets={meta.wallets} onClose={() => setDep(null)} onSaved={() => { setDep(null); refresh(); }} />
     </>
+  );
+}
+
+/* ===== Riwayat setoran per target: lihat, ubah, hapus ===== */
+function DepositHistory({ goal, ver, refresh, onEdit }) {
+  const res = useApi(() => api.goalDeposits(goal.id), [goal.id, ver]);
+  const [pend, setPend] = useState(null);
+  const [err, setErr] = useState('');
+  const rows = res.data;
+  if (!rows) return <Loading err={res.error} />;
+  const del = async (d) => {
+    if (pend !== d.id) { setPend(d.id); return; }
+    try { await api.delDeposit(goal.id, d.id); setPend(null); refresh(); } catch (e) { setErr(e.message); }
+  };
+  return (
+    <div className="dh" aria-label={`Riwayat setoran ${goal.name}`}>
+      {goal.saved_before > 0 && (
+        <div className="tx"><div className="ic">🏁</div><div>Tabungan awal<small>Diubah lewat tombol Ubah di atas</small></div><strong className="in">{rp(goal.saved_before)}</strong></div>
+      )}
+      {rows.length === 0 && <p className="note" style={{ margin: '8px 0 0' }}>Belum ada setoran. Ketuk Setor untuk mencatat yang pertama.</p>}
+      {rows.map((d) => (
+        <div className="tx" key={d.id}>
+          <div className="ic i">＋</div>
+          <div>
+            {d.wallet}
+            <small>
+              {dayLabel(d.date)} · {d.note}
+              <button className="lnk" onClick={() => onEdit(d)}>Ubah</button>
+              <button className="lnk d" onClick={() => del(d)}>{pend === d.id ? 'Yakin hapus?' : 'Hapus'}</button>
+            </small>
+          </div>
+          <strong className="in">{rp(d.amount)}</strong>
+        </div>
+      ))}
+      <Err msg={err} />
+    </div>
   );
 }

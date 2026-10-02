@@ -11,6 +11,7 @@ import Transaksi from './pages/Transaksi';
 import Dompet from './pages/Dompet';
 import Tren from './pages/Tren';
 import Rencana from './pages/Rencana';
+import Kelola from './pages/Kelola';
 
 const TABS = [['ringkasan', 'Ringkasan', Ringkasan], ['transaksi', 'Transaksi', Transaksi], ['dompet', 'Dompet', Dompet], ['tren', 'Tren', Tren], ['rencana', 'Rencana', Rencana]];
 const FAB_TABS = ['ringkasan', 'transaksi', 'dompet'];
@@ -36,6 +37,7 @@ export default function App() {
 function Shell({ user, logout }) {
   const [acc, setAcc] = useState(false);
   const [pw, setPw] = useState(false);
+  const [manage, setManage] = useState(false); // halaman Kelola dompet dan kategori
   const [tab, setTab] = useState('ringkasan');
   const [month, setMonth] = useState(curMonth());
   const [ver, setVer] = useState(0);
@@ -70,23 +72,26 @@ function Shell({ user, logout }) {
           </div>
         </header>
         {meta.error && <p className="note out" role="alert">{meta.error}</p>}
-        {meta.data && <Page month={month} ver={ver} meta={meta.data} refresh={refresh} openTx={openTx} setTab={setTab} />}
+        {meta.data && (manage
+          ? <Kelola ver={ver} refresh={refresh} onClose={() => setManage(false)} />
+          : <Page month={month} ver={ver} meta={meta.data} refresh={refresh} openTx={openTx} setTab={setTab} />)}
       </main>
 
       <nav aria-label="Menu utama">
         <div className="tabs">
           {TABS.map(([k, label]) => (
-            <button key={k} aria-current={tab === k ? 'page' : undefined} onClick={() => setTab(k)}>{label}</button>
+            <button key={k} aria-current={!manage && tab === k ? 'page' : undefined} onClick={() => { setManage(false); setTab(k); }}>{label}</button>
           ))}
         </div>
       </nav>
-      {FAB_TABS.includes(tab) && <button className="fab" onClick={() => openTx()}>Catat transaksi</button>}
+      {!manage && FAB_TABS.includes(tab) && <button className="fab" onClick={() => openTx()}>Catat transaksi</button>}
 
       <Dialog open={acc} onClose={() => setAcc(false)}>
         {acc && (
           <div style={{ display: 'grid', gap: 10 }}>
             <h2>Akun</h2>
             <p style={{ margin: 0 }}><b>{user.name}</b><br /><span className="note">{user.email}</span></p>
+            <button className="ghost" onClick={() => { setAcc(false); setManage(true); }}>Kelola dompet dan kategori</button>
             <button className="ghost" onClick={() => { setAcc(false); setPw(true); }}>Ganti kata sandi</button>
             <button className="save" onClick={logout}>Keluar</button>
             <button className="ghost" onClick={() => setAcc(false)}>Tutup</button>

@@ -33,7 +33,8 @@ CREATE TABLE IF NOT EXISTS transactions (
   wallet_id INT NOT NULL REFERENCES wallets(id),
   date DATE NOT NULL,
   note TEXT NOT NULL DEFAULT '',
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+  source TEXT NOT NULL DEFAULT 'manual' CHECK (source IN ('manual','import')),  -- impor: created_at adalah waktu impor, bukan waktu kejadian
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()          -- timestamp pencatatan; sumber jam transaksi
 );
 
 CREATE TABLE IF NOT EXISTS transfers (
@@ -79,6 +80,7 @@ CREATE TABLE IF NOT EXISTS goal_deposits (
 ALTER TABLE users ADD COLUMN IF NOT EXISTS token_version INT NOT NULL DEFAULT 0;
 
 -- Upgrade dari versi tanpa login: tambahkan user_id (dibiarkan kosong sampai diklaim lewat npm run db:claim)
+ALTER TABLE transactions  ADD COLUMN IF NOT EXISTS source TEXT NOT NULL DEFAULT 'manual' CHECK (source IN ('manual','import'));
 ALTER TABLE wallets       ADD COLUMN IF NOT EXISTS user_id INT REFERENCES users(id) ON DELETE CASCADE;
 ALTER TABLE categories    ADD COLUMN IF NOT EXISTS user_id INT REFERENCES users(id) ON DELETE CASCADE;
 ALTER TABLE transactions  ADD COLUMN IF NOT EXISTS user_id INT REFERENCES users(id) ON DELETE CASCADE;

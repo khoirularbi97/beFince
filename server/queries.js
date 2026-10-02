@@ -1,5 +1,5 @@
 import { q } from './db.js';
-import { bounds, lastDay, todayStr } from './util.js';
+import { bounds, lastDay, todayStr, APP_TZ, timeExpr } from './util.js';
 
 // Semua fungsi menerima `uid` (id pengguna) sebagai argumen pertama dan hanya membaca data milik pengguna itu.
 
@@ -12,6 +12,8 @@ const walletSql = (extra = '') => `
       + COALESCE((SELECT SUM(x.amount) FROM transfers x WHERE x.to_wallet = w.id AND x.date < $2), 0)
       - COALESCE((SELECT SUM(x.amount) FROM transfers x WHERE x.from_wallet = w.id AND x.date < $2), 0)
       - COALESCE((SELECT SUM(d.amount) FROM goal_deposits d WHERE d.wallet_id = w.id AND d.date < $2), 0) AS balance,
+    (SELECT COUNT(*) FROM transactions t WHERE t.wallet_id = w.id) + (SELECT COUNT(*) FROM transfers x WHERE x.from_wallet = w.id OR x.to_wallet = w.id)
+      + (SELECT COUNT(*) FROM goal_deposits d WHERE d.wallet_id = w.id) AS uses,
     COALESCE((SELECT SUM(t.amount) FROM transactions t WHERE t.wallet_id = w.id AND t.type='income' AND t.date >= $1 AND t.date < $2), 0) AS income,
     COALESCE((SELECT SUM(t.amount) FROM transactions t WHERE t.wallet_id = w.id AND t.type='expense' AND t.date >= $1 AND t.date < $2), 0) AS expense
   FROM wallets w WHERE w.user_id = $3 ${extra} ORDER BY w.id`;
@@ -93,10 +95,10 @@ export const budgetSuggest = (uid, month) => {
 
 export const goals = (uid) =>
   q(`SELECT g.id, g.name, g.emoji, g.target, g.deadline,
-            g.saved_before + COALESCE(d.total, 0) AS saved,
-            ROUND(COALESCE(d.recent, 0) / 3.0) AS pace
+            g.saved_before, g.saved_before + COALESCE(d.total, 0) AS saved,
+            ROUND(COALESCE(d.recent, 0) / 3.0) AS pace, COALESCE(d.n, 0) AS deposits
      FROM goals g
-     LEFT JOIN (SELECT goal_id, SUM(amount) AS total,
+     LEFT JOIN (SELECT goal_id, SUM(amount) AS total, COUNT(*) AS n,
                        SUM(amount) FILTER (WHERE date > CURRENT_DATE - 90) AS recent
                 FROM goal_deposits WHERE user_id = $1 GROUP BY 1) d ON d.goal_id = g.id
      WHERE g.user_id = $1 ORDER BY g.id`, [uid]);
@@ -104,8 +106,8 @@ export const goals = (uid) =>
 export const transactions = (uid, month) => {
   const [s, e] = bounds(month);
   return q(
-    `SELECT t.date, t.type, c.name AS category, w.name AS wallet, t.note, t.amount
+    `SELECT t.date, ${timeExpr('$4')} AS "time", t.type, c.name AS category, w.name AS wallet, t.note, t.amount
      FROM transactions t LEFT JOIN categories c ON c.id = t.category_id
      JOIN wallets w ON w.id = t.wallet_id
-     WHERE t.user_id = $3 AND t.date >= $1 AND t.date < $2 ORDER BY t.date, t.id`, [s, e, uid]);
+     WHERE t.user_id = $3 AND t.date >= $1 AND t.date < $2 ORDER BY t.date, "time", t.id`, [s, e, uid, APP_TZ]);
 };

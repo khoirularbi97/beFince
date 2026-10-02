@@ -135,5 +135,6 @@ Skrip mencetak kata sandi sementara dan mengeluarkan semua sesi lama. Masuk deng
 | `/api/health` jalan, `/api/health/db` 503 | Backend tidak bisa menjangkau Neon | Cek `DATABASE_URL`, dan pastikan project Neon aktif |
 | "Terlalu banyak percobaan" | Pembatas login (30 kali per 15 menit per IP) | Tunggu 15 menit |
 | Vercel menampilkan 404 | Root Directory bukan `client` | Ubah di Settings, lalu Redeploy |
+| Jam transaksi selisih 1 sampai 2 jam | `APP_TZ` belum sesuai zona waktumu | Set `APP_TZ` di Render: `Asia/Jakarta` (WIB), `Asia/Makassar` (WITA), atau `Asia/Jayapura` (WIT) |
 | Semua pengguna keluar sendiri | `JWT_SECRET` diganti | Normal: masuk lagi. Jangan mengubahnya tanpa alasan |
 | Permintaan pertama lama sekali | Render dan Neon baru bangun | Normal di paket gratis, lihat bagian 7 |

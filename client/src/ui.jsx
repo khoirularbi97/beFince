@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { caretAfterDigits, cleanDigits, fmtDigits, pastedDigits } from './money';
 
 export function Dialog({ open, onClose, children }) {
   const ref = useRef();
@@ -40,3 +41,36 @@ export const tilt = {
   },
   onPointerLeave(e) { e.currentTarget.style.transform = ''; },
 };
+
+// Isian nominal rupiah: tampil sebagai 1.500.000 saat diketik, nilainya (onChange) berupa angka saja: "1500000".
+// Kursor tetap di tempatnya saat titik pemisah ditambahkan, dan teks tempelan seperti "Rp 1.500.000,00" dibaca dengan benar.
+export function MoneyInput({ value, onChange, className = '', ...rest }) {
+  const ref = useRef(null);
+  const caret = useRef(null);
+  const shown = fmtDigits(value);
+  useLayoutEffect(() => {
+    if (caret.current !== null && ref.current && document.activeElement === ref.current) ref.current.setSelectionRange(caret.current, caret.current);
+    caret.current = null;
+  });
+  const change = (e) => {
+    const raw = e.target.value;
+    const pos = e.target.selectionStart ?? raw.length;
+    const before = raw.slice(0, pos).replace(/\D/g, '').length;
+    const d = cleanDigits(raw);
+    caret.current = caretAfterDigits(fmtDigits(d), before);
+    onChange(d);
+  };
+  const paste = (e) => {
+    const t = e.clipboardData?.getData('text') || '';
+    if (/^\d*$/.test(t.trim())) return; // angka biasa: biarkan perilaku normal
+    const d = pastedDigits(t);
+    if (d) { e.preventDefault(); caret.current = fmtDigits(d).length; onChange(d); }
+  };
+  return (
+    <span className={'money ' + className}>
+      <span aria-hidden="true">Rp</span>
+      <input ref={ref} type="text" inputMode="numeric" autoComplete="off" value={shown} onChange={change} onPaste={paste}
+        pattern="[1-9][0-9.]*" title="Isi nominal lebih dari 0" {...rest} />
+    </span>
+  );
+}

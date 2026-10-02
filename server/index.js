@@ -12,7 +12,7 @@ app.disable('x-powered-by');
 // Alamat frontend harus persis sama dengan yang tampil di browser, tanpa garis miring di akhir (dibersihkan otomatis)
 const origins = (process.env.CLIENT_ORIGIN || '').split(',').map((s) => s.trim().replace(/\/+$/, '')).filter(Boolean);
 app.use(cors({ origin: origins.length ? origins : true }));
-app.use(express.json({ limit: '100kb' }));
+app.use(express.json({ limit: '1mb' }));
 
 app.get('/', (_req, res) => res.json({ name: 'beFince API', ok: true }));
 app.get('/api/health', (_req, res) => res.json({ ok: true }));
@@ -26,6 +26,7 @@ app.use('/api', requireAuth, router); // semua rute data wajib login
 app.use((err, _req, res, _next) => {
   if (err instanceof HttpError) return res.status(err.status).json({ error: err.message });
   if (err.type === 'entity.parse.failed') return res.status(400).json({ error: 'Format JSON tidak valid' });
+  if (err.type === 'entity.too.large') return res.status(413).json({ error: 'Data terlalu besar. Impor per bagian (maksimal 1000 baris).' });
   // Kesalahan basis data yang umum: data terkait tidak ada, duplikat, format salah
   if (err.code === '23503') return res.status(400).json({ error: 'Data terkait (dompet/kategori) tidak ditemukan' });
   if (err.code === '23505') return res.status(409).json({ error: 'Data sudah ada' });
