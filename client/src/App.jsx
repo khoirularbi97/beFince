@@ -73,13 +73,15 @@ function Shell({ user, logout }) {
       <main>
         <header>
           <h1 className="brand" aria-label="beFince"><LogoLockup /></h1>
+          <div className="tools">
+            <button aria-label="Panduan pengguna" onClick={() => openGuide()}>?</button>
+            <button aria-label="Akun" onClick={() => setAcc(true)}>{user.name.trim()[0]?.toUpperCase() || '?'}</button>
+            <button aria-label={dark ? 'Ganti ke mode terang' : 'Ganti ke mode gelap'} onClick={() => setTheme(dark ? 'light' : 'dark')}>{dark ? '☀' : '☾'}</button>
+          </div>
           <div className="month">
             <button aria-label="Bulan sebelumnya" onClick={() => setMonth(shiftMonth(month, -1))}>‹</button>
             <span>{monthLabel(month)}</span>
             <button aria-label="Bulan berikutnya" onClick={() => setMonth(shiftMonth(month, 1))}>›</button>
-            <button aria-label="Panduan pengguna" style={{ marginLeft: 6 }} onClick={() => openGuide()}>?</button>
-            <button aria-label="Akun" style={{ marginLeft: 4 }} onClick={() => setAcc(true)}>{user.name.trim()[0]?.toUpperCase() || '?'}</button>
-            <button aria-label={dark ? 'Ganti ke mode terang' : 'Ganti ke mode gelap'} style={{ marginLeft: 4 }} onClick={() => setTheme(dark ? 'light' : 'dark')}>{dark ? '☀' : '☾'}</button>
           </div>
         </header>
         {meta.error && <p className="note out" role="alert">{meta.error}</p>}
