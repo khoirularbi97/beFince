@@ -6,7 +6,7 @@ import ImportFlow from './Import';
 import { Err, Loading } from '../ui';
 import { daysIn, rp } from '../util';
 
-export default function Transaksi({ month, ver, meta, refresh, openTx }) {
+export default function Transaksi({ month, ver, meta, refresh, openTx, openGuide }) {
   const bounds = () => [`${month}-01`, `${month}-${String(daysIn(month)).padStart(2, '0')}`];
   const [f, setF] = useState({ q: '', category_id: '', type: '', wallet_id: '', from: bounds()[0], to: bounds()[1] });
   const [qd, setQd] = useState('');
@@ -29,7 +29,7 @@ export default function Transaksi({ month, ver, meta, refresh, openTx }) {
   };
 
   if (imp) {
-    return <div className="page" id="p-impor"><ImportFlow meta={meta} onClose={() => setImp(false)} onDone={() => { setImp(false); refresh(); }} /></div>;
+    return <div className="page" id="p-impor"><ImportFlow meta={meta} openGuide={openGuide} onClose={() => setImp(false)} onDone={() => { setImp(false); refresh(); }} /></div>;
   }
 
   return (

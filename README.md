@@ -29,6 +29,16 @@ budget, tren, pola pengeluaran per hari dalam seminggu, target tabungan, dan eks
    E-wallet) dan kategori awal. Saldo awal dompet diisi lewat `PUT /api/wallets/:id` atau SQL Editor Neon.
 5. Opsional, data contoh untuk akun yang masih kosong: `npm run db:seed -- email@anda.com`
 
+## Panduan pengguna
+
+Ketuk tombol **?** di pojok atas (atau menu Akun > Panduan pengguna). Isinya 16 bagian yang bisa dibuka satu per satu dan dicari:
+mulai cepat (daftar langkah yang bertanda otomatis dari datamu), mencatat transaksi, membaca Ringkasan, dompet dan transfer,
+tren, budget, target tabungan, impor mutasi, ekspor, kelola dompet dan kategori, akun, rutinitas, tanya jawab, batasan, dan istilah.
+Halaman impor dan kartu "Belum ada pengeluaran" punya tautan langsung ke bagian yang relevan.
+
+Isi panduan ada di `client/src/guideContent.js`. Saat mengubah nama tombol atau menu di aplikasi, perbarui panduannya juga:
+`npm test` di folder `client` memeriksa bahwa semua tulisan layar yang disebut panduan masih ada di kode.
+
 ## Kelola dompet dan kategori
 
 Buka lewat menu Akun (inisial nama di pojok atas) > **Kelola dompet dan kategori**.

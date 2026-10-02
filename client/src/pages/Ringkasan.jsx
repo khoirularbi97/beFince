@@ -6,7 +6,7 @@ import TxList from '../TxList';
 import { Err, Loading, tilt } from '../ui';
 import { rp } from '../util';
 
-export default function Ringkasan({ month, ver, setTab }) {
+export default function Ringkasan({ month, ver, setTab, openGuide }) {
   const rep = useApi(() => api.report(month), [month, ver]);
   const recent = useApi(() => api.transactions({ month, limit: 5 }), [month, ver]);
   const [busy, setBusy] = useState('');
@@ -66,7 +66,11 @@ export default function Ringkasan({ month, ver, setTab }) {
           </section>
         </>
       ) : (
-        <section className="card"><h2>Belum ada pengeluaran</h2><p className="note">Ketuk "Catat transaksi" untuk mencatat yang pertama di bulan ini.</p></section>
+        <section className="card">
+          <h2>Belum ada pengeluaran</h2>
+          <p className="note">Ketuk "Catat transaksi" untuk mencatat yang pertama di bulan ini.</p>
+          <button className="ghost" onClick={() => openGuide('mulai')}>Lihat panduan mulai cepat</button>
+        </section>
       )}
 
       <section className="card" aria-label="Transaksi terbaru">

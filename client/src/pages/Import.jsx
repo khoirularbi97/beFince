@@ -13,7 +13,7 @@ const fromMap = (m) => {
   return { date: n(m.date), desc: m.desc === '' ? [] : [Number(m.desc)], debit: n(m.debit), credit: n(m.credit), amount: n(m.amount) };
 };
 
-export default function ImportFlow({ meta, onClose, onDone }) {
+export default function ImportFlow({ meta, openGuide, onClose, onDone }) {
   const [wallet, setWallet] = useState(meta.wallets[0]?.id || '');
   const [mode, setMode] = useState('file');
   const [raw, setRaw] = useState('');
@@ -133,6 +133,7 @@ export default function ImportFlow({ meta, onClose, onDone }) {
     <>
       <section className="card imp" aria-label="Impor mutasi">
         <div className="hd"><h2>Impor mutasi</h2><button onClick={onClose}>Kembali</button></div>
+        {openGuide && <p className="note" style={{ margin: '0 0 10px' }}>Baru pertama kali? <button className="lnk" style={{ marginLeft: 0 }} onClick={() => openGuide('impor')}>Baca panduan impor</button></p>}
         <Field label="Simpan ke dompet">
           <select value={wallet} onChange={(e) => { setWallet(e.target.value); setItems(null); }}>
             {meta.wallets.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}

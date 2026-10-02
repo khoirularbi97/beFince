@@ -12,6 +12,7 @@ import Dompet from './pages/Dompet';
 import Tren from './pages/Tren';
 import Rencana from './pages/Rencana';
 import Kelola from './pages/Kelola';
+import Panduan from './pages/Panduan';
 
 const TABS = [['ringkasan', 'Ringkasan', Ringkasan], ['transaksi', 'Transaksi', Transaksi], ['dompet', 'Dompet', Dompet], ['tren', 'Tren', Tren], ['rencana', 'Rencana', Rencana]];
 const FAB_TABS = ['ringkasan', 'transaksi', 'dompet'];
@@ -37,7 +38,8 @@ export default function App() {
 function Shell({ user, logout }) {
   const [acc, setAcc] = useState(false);
   const [pw, setPw] = useState(false);
-  const [manage, setManage] = useState(false); // halaman Kelola dompet dan kategori
+  const [view, setView] = useState(null); // halaman tambahan di luar tab: null | 'kelola' | 'panduan'
+  const [guideAt, setGuideAt] = useState(null); // bagian panduan yang dibuka pertama
   const [tab, setTab] = useState('ringkasan');
   const [month, setMonth] = useState(curMonth());
   const [ver, setVer] = useState(0);
@@ -56,6 +58,14 @@ function Shell({ user, logout }) {
 
   const Page = TABS.find((t) => t[0] === tab)[2];
   const openTx = (tx = null) => setTxDlg({ open: true, tx });
+  const openGuide = (section = null) => { setGuideAt(section); setView('panduan'); };
+  // Tujuan dari daftar langkah awal di panduan
+  const go = (target) => {
+    setView(null);
+    if (target === 'catat') openTx();
+    else if (target === 'kelola') setView('kelola');
+    else setTab(target);
+  };
   const closeTx = () => setTxDlg((s) => ({ ...s, open: false }));
 
   return (
@@ -67,31 +77,35 @@ function Shell({ user, logout }) {
             <button aria-label="Bulan sebelumnya" onClick={() => setMonth(shiftMonth(month, -1))}>‹</button>
             <span>{monthLabel(month)}</span>
             <button aria-label="Bulan berikutnya" onClick={() => setMonth(shiftMonth(month, 1))}>›</button>
-            <button aria-label="Akun" style={{ marginLeft: 6 }} onClick={() => setAcc(true)}>{user.name.trim()[0]?.toUpperCase() || '?'}</button>
+            <button aria-label="Panduan pengguna" style={{ marginLeft: 6 }} onClick={() => openGuide()}>?</button>
+            <button aria-label="Akun" style={{ marginLeft: 4 }} onClick={() => setAcc(true)}>{user.name.trim()[0]?.toUpperCase() || '?'}</button>
             <button aria-label={dark ? 'Ganti ke mode terang' : 'Ganti ke mode gelap'} style={{ marginLeft: 4 }} onClick={() => setTheme(dark ? 'light' : 'dark')}>{dark ? '☀' : '☾'}</button>
           </div>
         </header>
         {meta.error && <p className="note out" role="alert">{meta.error}</p>}
-        {meta.data && (manage
-          ? <Kelola ver={ver} refresh={refresh} onClose={() => setManage(false)} />
-          : <Page month={month} ver={ver} meta={meta.data} refresh={refresh} openTx={openTx} setTab={setTab} />)}
+        {meta.data && (view === 'kelola'
+          ? <Kelola ver={ver} refresh={refresh} onClose={() => setView(null)} />
+          : view === 'panduan'
+            ? <Panduan key={guideAt || 'awal'} initial={guideAt} onClose={() => setView(null)} onNavigate={go} />
+            : <Page month={month} ver={ver} meta={meta.data} refresh={refresh} openTx={openTx} setTab={setTab} openGuide={openGuide} />)}
       </main>
 
       <nav aria-label="Menu utama">
         <div className="tabs">
           {TABS.map(([k, label]) => (
-            <button key={k} aria-current={!manage && tab === k ? 'page' : undefined} onClick={() => { setManage(false); setTab(k); }}>{label}</button>
+            <button key={k} aria-current={!view && tab === k ? 'page' : undefined} onClick={() => { setView(null); setTab(k); }}>{label}</button>
           ))}
         </div>
       </nav>
-      {!manage && FAB_TABS.includes(tab) && <button className="fab" onClick={() => openTx()}>Catat transaksi</button>}
+      {!view && FAB_TABS.includes(tab) && <button className="fab" onClick={() => openTx()}>Catat transaksi</button>}
 
       <Dialog open={acc} onClose={() => setAcc(false)}>
         {acc && (
           <div style={{ display: 'grid', gap: 10 }}>
             <h2>Akun</h2>
             <p style={{ margin: 0 }}><b>{user.name}</b><br /><span className="note">{user.email}</span></p>
-            <button className="ghost" onClick={() => { setAcc(false); setManage(true); }}>Kelola dompet dan kategori</button>
+            <button className="ghost" onClick={() => { setAcc(false); openGuide(); }}>Panduan pengguna</button>
+            <button className="ghost" onClick={() => { setAcc(false); setView('kelola'); }}>Kelola dompet dan kategori</button>
             <button className="ghost" onClick={() => { setAcc(false); setPw(true); }}>Ganti kata sandi</button>
             <button className="save" onClick={logout}>Keluar</button>
             <button className="ghost" onClick={() => setAcc(false)}>Tutup</button>
