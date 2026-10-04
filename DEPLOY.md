@@ -105,7 +105,9 @@ Analisa cepat (tanpa AI) sudah jalan tanpa langkah ini. Untuk analisa AI, pilih 
 | `AI_API_KEY` | kunci dari Groq |
 | `AI_DAILY_LIMIT` | opsional, bawaan 5 per pengguna per hari |
 
-Model bawaan (`llama-3.3-70b-versatile`) dipakai otomatis. Kalau muncul error model tidak ditemukan, katalog Groq sudah berganti: lihat daftar model di situs Groq, lalu isi `AI_MODEL`.
+Model bawaan (`openai/gpt-oss-120b`) dipakai otomatis. Groq sering mengganti katalognya (`llama-3.3-70b-versatile` dihentikan 16 Agustus 2026). Kalau aplikasi menampilkan "model ... tidak tersedia atau sudah dihentikan", lihat daftar model terbaru di console.groq.com/docs/models lalu isi `AI_MODEL`.
+
+Saat mencoba pertama kali, naikkan `AI_DAILY_LIMIT` (misalnya 20) supaya tidak terbatas oleh jatah harian. Kegagalan di sisi penyedia tidak memakai jatah, tapi jawaban yang ditolak pemeriksa memakainya.
 
 **Alternatif: Google Gemini.** Buat kunci di Google AI Studio, lalu isi `AI_PROVIDER=gemini` dan `AI_API_KEY`. Di tingkat gratis, Google boleh memakai prompt dan jawaban
 untuk memperbaiki produknya, jadi pertimbangkan itu untuk data keuangan.
@@ -164,7 +166,9 @@ Skrip mencetak kata sandi sementara dan mengeluarkan semua sesi lama. Masuk deng
 | Vercel menampilkan 404 | Root Directory bukan `client` | Ubah di Settings, lalu Redeploy |
 | Jam transaksi selisih 1 sampai 2 jam | `APP_TZ` belum sesuai zona waktumu | Set `APP_TZ` di Render: `Asia/Jakarta` (WIB), `Asia/Makassar` (WITA), atau `Asia/Jayapura` (WIT) |
 | Analisa AI: "belum diaktifkan di server ini" | `AI_ENABLED` bukan `true` atau `ANTHROPIC_API_KEY` kosong | Isi di Render, lalu tunggu deploy ulang |
-| Analisa AI: "gagal atau tidak lolos pemeriksaan" | Kunci salah (log: `Kunci API ditolak`), model tidak tersedia, atau jawaban model ditolak pemeriksa | Cek log Render (`Analisa AI gagal:`); coba `AI_MODEL` lain; analisa cepat tetap tersedia |
+| Analisa AI: "model ... tidak tersedia atau sudah dihentikan" | Nama model sudah tidak ada di penyedia | Isi `AI_MODEL` dengan model yang masih ada (cek daftar model penyedia) |
+| Analisa AI: "kunci API ditolak" | `AI_API_KEY` salah, atau tidak cocok dengan `AI_PROVIDER` | Periksa keduanya di Render |
+| Analisa AI: "jawaban model tidak lolos pemeriksaan" | Model kecil tidak mengikuti format | Coba lagi, atau pakai model yang lebih besar lewat `AI_MODEL`. Detail alasan ada di log Render (`Analisa AI gagal:`) |
 | Analisa AI: "Penyedia AI sedang membatasi permintaan" | Batas tingkat gratis penyedia (per menit atau per hari) | Tunggu beberapa menit; jatah harian pengguna tidak terpakai |
 | Semua pengguna keluar sendiri | `JWT_SECRET` diganti | Normal: masuk lagi. Jangan mengubahnya tanpa alasan |
 | Permintaan pertama lama sekali | Render dan Neon baru bangun | Normal di paket gratis, lihat bagian 7 |

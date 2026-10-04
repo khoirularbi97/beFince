@@ -1,12 +1,13 @@
 // Panggilan ke model AI (Anthropic Messages API). Dipanggil dari server saja; kunci API tidak pernah sampai ke browser.
 // Hanya fakta teragregasi yang dikirim: tanpa catatan transaksi, nama, email, atau nomor rekening.
-import { validateModelReport } from './format.js';
+import { validateModelReport, salvageModelReport } from './format.js';
 
 // Penyedia yang didukung. "anthropic" memakai Messages API; sisanya memakai format Chat Completions yang kompatibel dengan OpenAI.
-// Nama model sering berganti; selalu bisa ditimpa lewat AI_MODEL. Alamat dan nama bawaan di bawah sudah dicek pada Oktober 2026.
+// Nama model SERING berganti atau dihentikan penyedia (contoh: Groq menghentikan llama-3.3-70b-versatile pada 16 Agustus 2026).
+// Nama bawaan di bawah hanya titik awal; selalu bisa ditimpa lewat AI_MODEL, dan aplikasi menampilkan alasannya kalau model ditolak.
 const PRESETS = {
   anthropic: { name: 'Anthropic', kind: 'anthropic', base: 'https://api.anthropic.com', model: 'claude-haiku-4-5-20251001' },
-  groq: { name: 'Groq', kind: 'openai', base: 'https://api.groq.com/openai/v1', model: 'llama-3.3-70b-versatile' },
+  groq: { name: 'Groq', kind: 'openai', base: 'https://api.groq.com/openai/v1', model: 'openai/gpt-oss-120b' },
   gemini: { name: 'Google Gemini', kind: 'openai', base: 'https://generativelanguage.googleapis.com/v1beta/openai', model: 'gemini-2.5-flash',
     notice: 'Di tingkat gratis Google, prompt dan jawaban boleh dipakai Google untuk memperbaiki produknya (sesuai ketentuan Google). Tingkat berbayar tidak.' },
   openrouter: { name: 'OpenRouter', kind: 'openai', base: 'https://openrouter.ai/api/v1', model: '' },
@@ -65,7 +66,19 @@ export const buildPrompt = (facts, hints, month) => JSON.stringify({
   temuan_awal_dari_aturan: hints.map((h) => `${h.id}: ${h.title}`),
 });
 
-const err = (msg, status) => Object.assign(new Error(msg), { status });
+const err = (msg, status, extra = {}) => Object.assign(new Error(msg), { status }, extra);
+
+// Ambil kode dan pesan error dari isi balasan penyedia (hanya untuk log server dan klasifikasi; tidak pernah dikirim ke pengguna)
+async function readProviderError(res) {
+  try {
+    const j = JSON.parse((await res.text()).slice(0, 4000));
+    const e = j.error || j;
+    return { code: String(e.code || e.type || '').slice(0, 60), detail: String(e.message || '').replace(/\s+/g, ' ').slice(0, 200) };
+  } catch { return { code: '', detail: '' }; }
+}
+const MODEL_GONE = /model_decommissioned|model_not_found|model_not_available|no_such_model/i;
+const MODEL_GONE_TEXT = /decommission|no longer supported|does not exist|not found|model.*(unavailable|not available)/i;
+const BAD_KEY = /invalid_api_key|authentication|unauthorized|permission/i;
 
 // Skema versi ramping untuk penyedia kompatibel OpenAI: beberapa penyedia menolak kata kunci seperti maxLength. Batasnya tetap dijaga pemeriksa kita.
 const lean = (o) => (Array.isArray(o) ? o.map(lean) : o && typeof o === 'object'
@@ -76,10 +89,15 @@ async function post(cfg, path, headers, body) {
   const timer = setTimeout(() => ctl.abort(), cfg.timeout);
   try {
     const res = await fetch(`${cfg.base}${path}`, { method: 'POST', signal: ctl.signal, headers: { 'content-type': 'application/json', ...headers }, body: JSON.stringify(body) });
-    if (!res.ok) throw err(`penyedia AI membalas ${res.status}`, res.status); // isi balasan sengaja tidak dicatat
+    if (!res.ok) {
+      const p = await readProviderError(res);
+      const gone = res.status !== 429 && res.status < 500 && (MODEL_GONE.test(p.code) || (res.status !== 401 && MODEL_GONE_TEXT.test(p.detail) && /model/i.test(p.detail)));
+      const kind = res.status === 401 || res.status === 403 || BAD_KEY.test(p.code) ? 'auth' : gone ? 'model' : res.status === 429 ? 'ratelimit' : res.status >= 500 ? 'server' : 'request';
+      throw err(`penyedia AI membalas ${res.status}${p.code ? ` (${p.code})` : ''}${p.detail ? `: ${p.detail}` : ''}`, res.status, { kind });
+    }
     return await res.json();
   } catch (e) {
-    if (e.name === 'AbortError') throw err('penyedia AI terlalu lama menjawab', 504);
+    if (e.name === 'AbortError') throw err('penyedia AI terlalu lama menjawab', 504, { kind: 'timeout' });
     throw e;
   } finally {
     clearTimeout(timer);
@@ -119,7 +137,7 @@ async function viaOpenAI(cfg, user, level) {
     try {
       data = await post(cfg, '/chat/completions', { authorization: `Bearer ${cfg.key}` }, body);
     } catch (e) {
-      if ([400, 404, 422].includes(e.status) && lv < 2) continue;
+      if ([400, 404, 422].includes(e.status) && e.kind === 'request' && lv < 2) continue; // model hilang / kunci salah tidak diperbaiki dengan turun tingkat
       throw e;
     }
     const msg = data.choices?.[0]?.message;
@@ -131,8 +149,20 @@ async function viaOpenAI(cfg, user, level) {
   throw err('model tidak mengembalikan hasil terstruktur');
 }
 
-// Minta analisa, periksa, dan ulangi sekali dengan umpan balik kalau keluarannya ditolak pemeriksa
-export async function askModel({ facts, by, hints, month }) {
+// Alasan kegagalan yang aman ditampilkan ke pengguna (tanpa isi balasan penyedia)
+export function explainFailure(e, cfg = aiConfig()) {
+  const tail = 'Analisa cepat tetap tersedia.';
+  if (e.kind === 'model') return `Analisa AI gagal: model "${cfg.model}" tidak tersedia atau sudah dihentikan penyedia. Pemilik server perlu mengisi AI_MODEL dengan model yang masih ada (lihat daftar model terbaru di situs penyedia). ${tail}`;
+  if (e.kind === 'auth') return `Analisa AI gagal: kunci API ditolak penyedia. Pemilik server perlu memeriksa AI_API_KEY dan AI_PROVIDER. ${tail}`;
+  if (e.kind === 'server') return `Analisa AI gagal: penyedia AI sedang bermasalah. Coba lagi nanti. ${tail}`;
+  if (e.kind === 'timeout') return `Analisa AI gagal: penyedia AI terlalu lama menjawab. Coba lagi nanti. ${tail}`;
+  if (e.kind === 'request') return `Analisa AI gagal: penyedia menolak permintaan (kode ${e.status}). Pemilik server perlu memeriksa AI_PROVIDER dan AI_MODEL. ${tail}`;
+  return `Analisa AI gagal: jawaban model tidak lolos pemeriksaan (model gratis kadang tidak mengikuti format). Coba lagi, atau pakai model yang lebih besar lewat AI_MODEL. ${tail}`;
+}
+
+// Minta analisa dan periksa. Keluaran yang kurang rapi diselamatkan (butir bermasalah dibuang); kalau tetap tidak cukup,
+// diulang sekali dengan umpan balik. Angka karangan tidak pernah lolos.
+export async function askModel({ facts, by, hints, month, fallbackHeadline }) {
   const cfg = aiConfig();
   const user = buildPrompt(facts, hints, month);
   let level = 0;
@@ -142,12 +172,18 @@ export async function askModel({ facts, by, hints, month }) {
     level = r.level;
     return r.input;
   };
-  let raw = await run(user);
-  let v = validateModelReport(raw, by);
-  if (!v.ok) {
-    raw = await run(`${user}\n\nKeluaran sebelumnya ditolak: ${v.errors.slice(0, 6).join('; ')}. Perbaiki dan panggil submit_analysis lagi. Ingat: semua angka lewat penanda {{kunci}}.`);
-    v = validateModelReport(raw, by);
+  const accept = (raw) => {
+    const v = validateModelReport(raw, by);
+    if (v.ok) return { report: v.report, errors: [] };
+    const s = salvageModelReport(raw, by, fallbackHeadline);
+    if (s.ok) { console.warn(`Analisa AI: ${s.dropped} butir dibuang oleh pemeriksa (${v.errors.slice(0, 3).join('; ')})`); return { report: { ...s.report, dropped: s.dropped }, errors: [] }; }
+    return { errors: v.errors };
+  };
+  let raw = await run(user), r = accept(raw);
+  if (!r.report) {
+    raw = await run(`${user}\n\nKeluaran sebelumnya ditolak: ${r.errors.slice(0, 6).join('; ')}. Perbaiki dan panggil submit_analysis lagi. Ingat: semua angka lewat penanda {{kunci}}.`);
+    r = accept(raw);
   }
-  if (!v.ok) throw new Error('keluaran model tidak lolos pemeriksaan: ' + v.errors.slice(0, 3).join('; '));
-  return { report: v.report, model: cfg.model };
+  if (!r.report) throw new Error('keluaran model tidak lolos pemeriksaan: ' + r.errors.slice(0, 3).join('; '));
+  return { report: r.report, model: cfg.model };
 }

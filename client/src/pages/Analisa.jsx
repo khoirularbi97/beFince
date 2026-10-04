@@ -30,6 +30,7 @@ function ReportView({ report }) {
           </div>
         ) : null;
       })}
+      {report.dropped > 0 && <p className="note">{report.dropped} butir saran dibuang oleh pemeriksa karena memuat angka yang tidak bisa diverifikasi, jadi yang tampil di sini sudah aman.</p>}
       {report.watch?.length > 0 && (<><h3>Perlu dipantau</h3><ul className="plain">{report.watch.map((w, i) => <li key={i}>{w}</li>)}</ul></>)}
       {report.missing_data?.length > 0 && (<><h3>Data yang kurang</h3><ul className="plain">{report.missing_data.map((w, i) => <li key={i}>{w}</li>)}</ul></>)}
       {report.evidence?.length > 0 && (

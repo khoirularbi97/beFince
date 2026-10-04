@@ -5,7 +5,7 @@ import { HttpError, bad, wrap, monthOf, bounds, shiftMonth, todayStr } from '../
 import { buildFacts, factsKey } from './facts.js';
 import { rulesReport } from './rules.js';
 import { resolveReport } from './format.js';
-import { askModel, aiConfig } from './model.js';
+import { askModel, aiConfig, explainFailure } from './model.js';
 
 export const aiRouter = Router();
 
@@ -82,15 +82,14 @@ aiRouter.post('/ai/analysis', wrap(async (req, res) => {
   const hints = rulesReport(F).findings;
   let out;
   try {
-    out = await askModel({ facts: F.facts, by: F.by, hints, month });
+    out = await askModel({ facts: F.facts, by: F.by, hints, month, fallbackHeadline: rulesReport(F).headline });
   } catch (e) {
     console.warn('Analisa AI gagal:', e.message);
-    if (e.status === 429) { // dibatasi penyedia (umum di tingkat gratis): tidak memakai jatah harian pengguna
-      await q('UPDATE ai_usage SET calls = GREATEST(calls - 1, 0) WHERE user_id = $1 AND day = $2::date', [req.userId, todayStr()]);
-      throw new HttpError(503, 'Penyedia AI sedang membatasi permintaan (tingkat gratis punya batas per menit dan per hari). Jatah harianmu tidak terpakai, coba lagi beberapa menit lagi.');
-    }
-    if (e.status === 401 || e.status === 403) console.warn('Kunci API ditolak penyedia AI: periksa AI_API_KEY dan AI_PROVIDER di pengaturan server.');
-    throw new HttpError(502, 'Analisa AI gagal atau tidak lolos pemeriksaan. Analisa aturan tetap tersedia, dan kamu bisa coba lagi nanti.');
+    // Kegagalan di sisi penyedia (HTTP error, batas, timeout) tidak memakai jatah harian: tidak ada hasil, dan penyedia sendiri yang membatasi.
+    // Jawaban yang diterima tetapi ditolak pemeriksa tetap dihitung, supaya tidak bisa dipakai menguras penyedia berbayar.
+    if (e.status) await q('UPDATE ai_usage SET calls = GREATEST(calls - 1, 0) WHERE user_id = $1 AND day = $2::date', [req.userId, todayStr()]);
+    if (e.status === 429) throw new HttpError(503, 'Penyedia AI sedang membatasi permintaan (tingkat gratis punya batas per menit dan per hari). Jatah harianmu tidak terpakai, coba lagi beberapa menit lagi.');
+    throw new HttpError(502, explainFailure(e, cfg));
   }
   const report = { ...resolveReport(out.report, F.by), source: 'ai', month };
   await q('INSERT INTO ai_reports (user_id, month, facts_key, model, report) VALUES ($1,$2,$3,$4,$5)', [req.userId, month, key, out.model, JSON.stringify(report)]);

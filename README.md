@@ -54,7 +54,7 @@ Ada beberapa penyedia dengan tingkat gratis. Batas dan kebijakannya berubah-ubah
 
 | Penyedia | `AI_PROVIDER` | Model bawaan | Catatan |
 |---|---|---|---|
-| **Groq** (paling mudah) | `groq` | `llama-3.3-70b-versatile` | Tingkat gratis tanpa kartu kredit, dengan batas per menit dan per hari yang berbeda tiap model. Katalog modelnya sering berganti. |
+| **Groq** (paling mudah) | `groq` | `openai/gpt-oss-120b` | Tingkat gratis tanpa kartu kredit, dengan batas per menit, per hari, dan per menit token yang berbeda tiap model (menurut ringkasan pihak ketiga, sekitar 30 permintaan per menit dan 8 ribu token per menit untuk model ini; cek di console.groq.com). Katalog modelnya sering berganti: `llama-3.3-70b-versatile` sudah dihentikan pada 16 Agustus 2026. |
 | **Google Gemini** | `gemini` | `gemini-2.5-flash` | Ada tingkat gratis untuk beberapa model lewat Google AI Studio. **Di tingkat gratis, prompt dan jawaban boleh dipakai Google untuk memperbaiki produknya**; tingkat berbayar tidak. |
 | **OpenRouter** | `openrouter` | (wajib isi `AI_MODEL`) | Model berlabel `:free` punya batas permintaan harian yang kecil, dan daftarnya sering berganti. |
 | Server sendiri / lainnya | `compat` | (wajib isi `AI_MODEL`, `AI_BASE_URL`) | Server apa pun yang meniru Chat Completions OpenAI, misalnya Ollama. Server Render tidak bisa menjangkau laptopmu, jadi servernya harus bisa diakses dari internet. |
@@ -63,8 +63,10 @@ Contoh Groq di Render: `AI_ENABLED=true`, `AI_PROVIDER=groq`, `AI_API_KEY=` (kun
 
 Hal-hal yang berlaku untuk penyedia gratis:
 
-- **Model gratis lebih kecil.** Kemampuan mengikuti format terstruktur berbeda-beda. Pemeriksa kita menolak keluaran yang melenceng lalu kembali ke Analisa cepat, jadi hasilnya aman tapi AI-nya kadang tidak muncul. Kalau terlalu sering gagal, coba model yang lebih besar.
-- **Batas dari penyedia (429).** Kalau penyedia membatasi permintaan, pengguna melihat pesan jelas dan jatah hariannya dikembalikan.
+- **Nama model bisa hilang kapan saja.** Kalau model dihentikan, aplikasi menampilkan alasannya ("model ... tidak tersedia atau sudah dihentikan") dan jatah hariannya tidak terpakai. Isi `AI_MODEL` dengan model yang masih ada (lihat console.groq.com/docs/models atau halaman deprecations).
+- **Batas token per menit.** Tingkat gratis punya batas token per menit yang kecil. Satu analisa memakai beberapa ribu token, jadi jangan menekan tombolnya berkali-kali dalam satu menit.
+- **Model gratis lebih kecil.** Kemampuan mengikuti format terstruktur berbeda-beda. Pemeriksa kita membuang butir yang memuat angka karangan dan menerima sisanya (laporan menampilkan berapa butir yang dibuang). Kalau terlalu banyak yang rusak, jawaban ditolak dan aplikasi kembali ke Analisa cepat. Kalau sering terjadi, coba model yang lebih besar.
+- **Jatah harian.** Kegagalan di sisi penyedia (batas 429, model dihentikan, kunci salah, error server, timeout) tidak memakai jatah harian pengguna. Jawaban yang diterima tetapi ditolak pemeriksa tetap memakai satu jatah, supaya tidak bisa dipakai menguras penyedia berbayar.
 - **Penyesuaian otomatis.** Kalau sebuah penyedia menolak bentuk permintaan memakai fungsi, aplikasi turun otomatis ke cara yang lebih sederhana (fungsi otomatis, lalu JSON di isi pesan).
 - **Kebijakan data.** Baca ketentuan penyedia sebelum mengizinkan. Yang dikirim hanya ringkasan angka, tapi tetap data keuangan. Aplikasi menampilkan nama penyedia di layar izin.
 

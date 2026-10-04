@@ -1,7 +1,7 @@
-import { fmtVal, rp, strayNumber, validateModelReport, resolveReport, placeholders } from '../ai/format.js';
+import { fmtVal, rp, strayNumber, validateModelReport, salvageModelReport, resolveReport, placeholders } from '../ai/format.js';
 import { buildFacts, safeName, factsKey } from '../ai/facts.js';
 import { rulesReport } from '../ai/rules.js';
-import { aiConfig, extractJson } from '../ai/model.js';
+import { aiConfig, extractJson, explainFailure } from '../ai/model.js';
 let pass = 0, fail = 0;
 const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); c ? pass++ : fail++; };
 const eq = (a, b, m) => { const o = JSON.stringify(a) === JSON.stringify(b); ok(o, m + (o ? '' : `\n   dapat: ${JSON.stringify(a)}\n   harusnya: ${JSON.stringify(b)}`)); };
@@ -92,7 +92,7 @@ const C = (env) => withEnv({ AI_ENABLED: 'true', ...env }, () => aiConfig());
 let c = C({ ANTHROPIC_API_KEY: 'k' });
 ok(c.enabled && c.provider === 'anthropic' && c.kind === 'anthropic' && c.base === 'https://api.anthropic.com' && c.model === 'claude-haiku-4-5-20251001', 'bawaan: Anthropic dengan kunci lama ANTHROPIC_API_KEY tetap jalan (kompatibel mundur)');
 c = C({ AI_PROVIDER: 'groq', AI_API_KEY: 'gsk_x' });
-ok(c.enabled && c.kind === 'openai' && c.base === 'https://api.groq.com/openai/v1' && c.model === 'llama-3.3-70b-versatile' && c.name === 'Groq', 'preset Groq: alamat dan model bawaan terisi, cukup AI_API_KEY');
+ok(c.enabled && c.kind === 'openai' && c.base === 'https://api.groq.com/openai/v1' && c.model === 'openai/gpt-oss-120b' && c.name === 'Groq', 'preset Groq: alamat dan model bawaan terisi (openai/gpt-oss-120b, pengganti llama-3.3-70b-versatile yang dihentikan 16 Agustus 2026), cukup AI_API_KEY');
 c = C({ AI_PROVIDER: 'gemini', AI_API_KEY: 'x' });
 ok(c.enabled && c.base === 'https://generativelanguage.googleapis.com/v1beta/openai' && c.model === 'gemini-2.5-flash' && /memperbaiki produk/.test(c.notice), 'preset Gemini: alamat kompatibel OpenAI, model bawaan, dan peringatan data tingkat gratis');
 c = C({ AI_PROVIDER: 'openrouter', AI_API_KEY: 'x' });
@@ -108,4 +108,26 @@ ok(!C({ AI_PROVIDER: 'groq' }).enabled && !withEnv({ AI_PROVIDER: 'groq', AI_API
 ok(C({ AI_PROVIDER: 'groq', AI_API_KEY: 'x', AI_MODEL: 'model-lain' }).model === 'model-lain', 'AI_MODEL menimpa model bawaan');
 // pembaca JSON dari isi pesan
 eq([extractJson('```json\n{"a":1}\n```'), extractJson('Tentu! {"a":{"b":2}} semoga membantu'), extractJson('tanpa json'), extractJson('{rusak')], [{ a: 1 }, { a: { b: 2 } }, null, null], 'extractJson: pagar kode, teks pembuka dan penutup, dan masukan rusak');
+
+// ---------- mode penyelamatan ----------
+const fb = 'Kondisi bulan ini baik: tersisa {{net}} dari pemasukan.';
+const mix = { ...good, findings: [...good.findings, { title: 'Sisa', detail: 'Sisanya Rp 3.200.000 atau 40%.', severity: 'warn' }], steps: [...good.steps, { title: 'Palsu', how: 'Tabung {{angka_palsu}}.', horizon: '30_hari' }] };
+ok(!validateModelReport(mix, F.by).ok, 'keluaran campuran ditolak oleh pemeriksa ketat');
+let sv = salvageModelReport(mix, F.by, fb);
+ok(sv.ok && sv.dropped === 2 && sv.report.findings.length === 2 && sv.report.steps.length === 2, 'penyelamatan: butir dengan angka karangan dan penanda palsu dibuang, sisanya (2 temuan, 2 langkah) dipertahankan');
+ok(!JSON.stringify(sv.report).match(/Rp\s?3\.200|angka_palsu/), 'tidak ada angka karangan yang lolos lewat penyelamatan');
+sv = salvageModelReport({ ...good, headline: 'Sisa Rp 3.200.000.' }, F.by, fb);
+ok(sv.ok && sv.report.headline === fb && sv.dropped === 1, 'kalimat kesimpulan bermasalah diganti kalimat dari aturan');
+sv = salvageModelReport({ ...good, findings: [{ ...good.findings[0], detail: 'kata '.repeat(100) + '{{net}}' }, good.findings[1]] }, F.by, fb);
+ok(sv.ok && sv.dropped === 0 && sv.report.findings[0].detail.length <= 300 && sv.report.findings[0].detail.endsWith('…'), 'teks kepanjangan dipotong, bukan dibuang (' + sv.report.findings[0].detail.length + ' karakter)');
+sv = salvageModelReport({ ...good, findings: [{ title: 'x', detail: 'Rp 5.000.000', severity: 'info' }, { title: 'y', detail: '12%', severity: 'info' }], steps: good.steps }, F.by, fb);
+ok(!sv.ok, 'kalau terlalu banyak butir bermasalah (kurang dari 2 temuan lolos), penyelamatan menyerah');
+ok(!salvageModelReport(null, F.by, fb).ok && !salvageModelReport('x', F.by, fb).ok, 'penyelamatan menolak keluaran yang bukan objek');
+const svm = salvageModelReport(mix, F.by, fb);
+const rr = resolveReport({ ...svm.report, dropped: svm.dropped }, F.by);
+ok(rr.dropped === 2, 'jumlah butir yang dibuang ikut dibawa ke laporan akhir (dropped = 2)');
+// alasan kegagalan untuk pengguna
+const cfgx = { model: 'm-x' };
+eq([explainFailure({ kind: 'model' }, cfgx), explainFailure({ kind: 'auth' }, cfgx)].map((x) => /m-x/.test(x) + '|' + /AI_MODEL|AI_API_KEY/.test(x)), ['true|true', 'false|true'], 'pesan alasan: model hilang menyebut nama model dan AI_MODEL; kunci salah menyebut AI_API_KEY');
+ok([{ kind: 'server' }, { kind: 'timeout' }, { kind: 'request', status: 400 }, {}].every((e) => /^Analisa AI gagal:/.test(explainFailure(e, cfgx)) && /Analisa cepat tetap tersedia/.test(explainFailure(e, cfgx))), 'semua alasan lain: diawali "Analisa AI gagal:" dan menyebut analisa cepat tetap tersedia');
 console.log(`\n${pass} lolos, ${fail} gagal`); process.exit(fail ? 1 : 0);
