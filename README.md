@@ -46,6 +46,7 @@ AI_API_KEY=...               # kunci API penyedia itu, simpan sebagai rahasia (j
 AI_MODEL=...                 # opsional untuk anthropic, groq, gemini; wajib untuk openrouter, openai, compat
 AI_BASE_URL=...              # hanya untuk compat, atau menimpa alamat bawaan
 AI_DAILY_LIMIT=5             # opsional; batas per pengguna per hari
+AI_MAX_TOKENS=3000           # opsional; batas token keluaran (model yang "berpikir" memakai sebagian untuk penalaran)
 ```
 
 ### Analisa AI gratis
@@ -63,6 +64,8 @@ Contoh Groq di Render: `AI_ENABLED=true`, `AI_PROVIDER=groq`, `AI_API_KEY=` (kun
 
 Hal-hal yang berlaku untuk penyedia gratis:
 
+- **Model penalar (misalnya gpt-oss).** Model seperti ini memakai token untuk berpikir sebelum menjawab. Untuk Groq + gpt-oss, aplikasi otomatis menurunkan usaha berpikirnya (`reasoning_effort=low`) dan memberi batas token 3000. Kalau pesan "jawaban terpotong karena batas token" muncul, naikkan `AI_MAX_TOKENS` atau pakai model lain.
+- **Alasan teknis.** Kalau jawaban model ditolak pemeriksa, pesan di layar menyertakan alasan teknisnya (misalnya bagian mana yang memuat angka karangan). Cuplikan jawaban yang ditolak ada di log server (Render > Logs, baris `Cuplikan keluaran model yang ditolak`), tidak pernah dikirim ke pengguna.
 - **Nama model bisa hilang kapan saja.** Kalau model dihentikan, aplikasi menampilkan alasannya ("model ... tidak tersedia atau sudah dihentikan") dan jatah hariannya tidak terpakai. Isi `AI_MODEL` dengan model yang masih ada (lihat console.groq.com/docs/models atau halaman deprecations).
 - **Batas token per menit.** Tingkat gratis punya batas token per menit yang kecil. Satu analisa memakai beberapa ribu token, jadi jangan menekan tombolnya berkali-kali dalam satu menit.
 - **Model gratis lebih kecil.** Kemampuan mengikuti format terstruktur berbeda-beda. Pemeriksa kita membuang butir yang memuat angka karangan dan menerima sisanya (laporan menampilkan berapa butir yang dibuang). Kalau terlalu banyak yang rusak, jawaban ditolak dan aplikasi kembali ke Analisa cepat. Kalau sering terjadi, coba model yang lebih besar.

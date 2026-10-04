@@ -28,6 +28,8 @@ export function aiConfig() {
     enabled, provider, kind: p?.kind || 'openai', name, key, base, model, notice: p?.notice || null,
     limit: Math.max(0, Number(process.env.AI_DAILY_LIMIT ?? 5)),
     timeout: Number(process.env.AI_TIMEOUT_MS || 40000),
+    // Model yang "berpikir" (mis. gpt-oss) memakai token untuk penalaran di dalam batas ini, jadi batas openai-compatible dibuat lebih longgar
+    maxTokens: Number(process.env.AI_MAX_TOKENS || (p?.kind === 'anthropic' ? 1800 : 3000)),
   };
 }
 
@@ -107,12 +109,12 @@ async function post(cfg, path, headers, body) {
 // Anthropic Messages API (tool use)
 async function viaAnthropic(cfg, user) {
   const data = await post(cfg, '/v1/messages', { 'x-api-key': cfg.key, 'anthropic-version': '2023-06-01' }, {
-    model: cfg.model, max_tokens: 1800, system: SYSTEM, messages: [{ role: 'user', content: user }],
+    model: cfg.model, max_tokens: cfg.maxTokens, system: SYSTEM, messages: [{ role: 'user', content: user }],
     tools: [{ name: 'submit_analysis', description: 'Kirim hasil analisa keuangan terstruktur', input_schema: SCHEMA }],
     tool_choice: { type: 'tool', name: 'submit_analysis' },
   });
   const block = (data.content || []).find((b) => b.type === 'tool_use' && b.name === 'submit_analysis');
-  if (!block) throw err('model tidak mengembalikan hasil terstruktur');
+  if (!block) throw err('model tidak mengembalikan hasil terstruktur', undefined, { kind: 'structure' });
   return block.input;
 }
 
@@ -128,25 +130,31 @@ export function extractJson(text) {
 // Turun tingkat hanya kalau penyedia menolak bentuk permintaannya (400, 404, 422); pengaturan itu diingat selama satu permintaan pengguna.
 async function viaOpenAI(cfg, user, level) {
   const tool = { type: 'function', function: { name: 'submit_analysis', description: 'Kirim hasil analisa keuangan terstruktur', parameters: lean(SCHEMA) } };
+  // Groq + gpt-oss adalah model penalar: tekan usaha berpikirnya supaya token tidak habis sebelum jawaban selesai
+  let effort = cfg.provider === 'groq' && /gpt-oss/i.test(cfg.model);
   for (let lv = level; lv <= 2; lv++) {
     const content = lv === 2 ? `${user}\n\nBalas HANYA dengan satu objek JSON (tanpa teks lain, tanpa pagar kode) yang cocok dengan skema ini:\n${JSON.stringify(lean(SCHEMA))}` : user;
     const body = { model: cfg.model, messages: [{ role: 'system', content: SYSTEM }, { role: 'user', content }] };
-    body[cfg.provider === 'openai' ? 'max_completion_tokens' : 'max_tokens'] = 1800;
+    body[cfg.provider === 'openai' ? 'max_completion_tokens' : 'max_tokens'] = cfg.maxTokens;
+    if (effort) body.reasoning_effort = 'low';
     if (lv < 2) { body.tools = [tool]; body.tool_choice = lv === 0 ? { type: 'function', function: { name: 'submit_analysis' } } : 'auto'; }
     let data;
     try {
       data = await post(cfg, '/chat/completions', { authorization: `Bearer ${cfg.key}` }, body);
     } catch (e) {
+      if (e.kind === 'request' && effort) { effort = false; lv--; continue; } // penyedia menolak reasoning_effort: ulangi tingkat yang sama tanpa itu
       if ([400, 404, 422].includes(e.status) && e.kind === 'request' && lv < 2) continue; // model hilang / kunci salah tidak diperbaiki dengan turun tingkat
       throw e;
     }
-    const msg = data.choices?.[0]?.message;
+    const choice = data.choices?.[0], msg = choice?.message;
     const call = msg?.tool_calls?.find((c) => c.function?.name === 'submit_analysis') || msg?.tool_calls?.[0];
     const input = (call && parseJson(call.function?.arguments)) || extractJson(msg?.content);
     if (input) return { input, level: lv };
+    // Terpotong karena batas token (model berpikir terlalu panjang): turun tingkat tidak membantu dan hanya memboroskan token
+    if (choice?.finish_reason === 'length') throw err('keluaran model terpotong karena batas token', undefined, { kind: 'truncated' });
     if (lv < 2) continue;
   }
-  throw err('model tidak mengembalikan hasil terstruktur');
+  throw err('model tidak mengembalikan hasil terstruktur', undefined, { kind: 'structure' });
 }
 
 // Alasan kegagalan yang aman ditampilkan ke pengguna (tanpa isi balasan penyedia)
@@ -157,7 +165,10 @@ export function explainFailure(e, cfg = aiConfig()) {
   if (e.kind === 'server') return `Analisa AI gagal: penyedia AI sedang bermasalah. Coba lagi nanti. ${tail}`;
   if (e.kind === 'timeout') return `Analisa AI gagal: penyedia AI terlalu lama menjawab. Coba lagi nanti. ${tail}`;
   if (e.kind === 'request') return `Analisa AI gagal: penyedia menolak permintaan (kode ${e.status}). Pemilik server perlu memeriksa AI_PROVIDER dan AI_MODEL. ${tail}`;
-  return `Analisa AI gagal: jawaban model tidak lolos pemeriksaan (model gratis kadang tidak mengikuti format). Coba lagi, atau pakai model yang lebih besar lewat AI_MODEL. ${tail}`;
+  if (e.kind === 'truncated') return `Analisa AI gagal: jawaban model terpotong karena batas token (model yang berpikir panjang butuh lebih banyak). Pemilik server bisa menaikkan AI_MAX_TOKENS atau memakai model lain lewat AI_MODEL. ${tail}`;
+  if (e.kind === 'structure') return `Analisa AI gagal: model tidak mengembalikan hasil terstruktur (model gratis kadang tidak mengikuti format). Coba lagi, atau pakai model yang lebih besar lewat AI_MODEL. ${tail}`;
+  const why = e.reasons?.length ? ` Alasan teknis: ${e.reasons.slice(0, 3).join('; ')}.` : '';
+  return `Analisa AI gagal: jawaban model tidak lolos pemeriksaan (model gratis kadang tidak mengikuti format).${why} Coba lagi, atau pakai model yang lebih besar lewat AI_MODEL. ${tail}`;
 }
 
 // Minta analisa dan periksa. Keluaran yang kurang rapi diselamatkan (butir bermasalah dibuang); kalau tetap tidak cukup,
@@ -184,6 +195,9 @@ export async function askModel({ facts, by, hints, month, fallbackHeadline }) {
     raw = await run(`${user}\n\nKeluaran sebelumnya ditolak: ${r.errors.slice(0, 6).join('; ')}. Perbaiki dan panggil submit_analysis lagi. Ingat: semua angka lewat penanda {{kunci}}.`);
     r = accept(raw);
   }
-  if (!r.report) throw new Error('keluaran model tidak lolos pemeriksaan: ' + r.errors.slice(0, 3).join('; '));
+  if (!r.report) {
+    console.warn('Cuplikan keluaran model yang ditolak:', JSON.stringify(raw).slice(0, 500)); // hanya untuk log server pemilik
+    throw err('keluaran model tidak lolos pemeriksaan: ' + r.errors.slice(0, 3).join('; '), undefined, { kind: 'validation', reasons: r.errors });
+  }
   return { report: r.report, model: cfg.model };
 }

@@ -25,6 +25,27 @@ const HEALTH = ['baik', 'perlu_perhatian', 'waspada'], SEV = ['good', 'info', 'w
 const clean = (s) => String(s).replace(/[\u0000-\u001f\u007f<>]/g, ' ').replace(/\s+/g, ' ').trim();
 const clip = (s, max) => (s.length <= max ? s : s.slice(0, max - 1).replace(/\s+\S*$/, '') + '…');
 
+// Model kecil sering menulis nilai pilihan dengan variasi ("warning", "30 hari", "this week"). Ratakan ke nilai yang kita pakai.
+const norm = (v) => String(v ?? '').toLowerCase().trim().replace(/[\s\-]+/g, '_');
+const SEV_MAP = { good: 'good', positive: 'good', success: 'good', baik: 'good', ok: 'good', info: 'info', information: 'info', informasi: 'info', neutral: 'info', note: 'info', warn: 'warn', warning: 'warn', peringatan: 'warn', caution: 'warn', alert: 'warn', danger: 'warn', critical: 'warn' };
+const HOR_MAP = { minggu_ini: 'minggu_ini', this_week: 'minggu_ini', week: 'minggu_ini', '1_minggu': 'minggu_ini', segera: 'minggu_ini', '30_hari': '30_hari', '30_days': '30_hari', '30_day': '30_hari', bulan_ini: '30_hari', this_month: '30_hari', '1_bulan': '30_hari', '3_bulan': '3_bulan', '3_months': '3_bulan', '90_hari': '3_bulan', jangka_panjang: '3_bulan' };
+const HEALTH_MAP = { baik: 'baik', good: 'baik', healthy: 'baik', ok: 'baik', sehat: 'baik', perlu_perhatian: 'perlu_perhatian', attention: 'perlu_perhatian', needs_attention: 'perlu_perhatian', caution: 'perlu_perhatian', waspada: 'waspada', alert: 'waspada', warning: 'waspada', critical: 'waspada', bad: 'waspada' };
+const mapv = (v, map) => map[norm(v)] ?? v;
+// Buka bungkus ({"analysis": {...}}) dan ratakan nilai pilihan; tidak mengubah isi teks
+export function normalizeReport(raw) {
+  if (!raw || typeof raw !== 'object') return raw;
+  let r = raw;
+  if (!Array.isArray(r.findings) && !Array.isArray(r.steps)) {
+    const inner = Object.values(r).find((v) => v && typeof v === 'object' && (Array.isArray(v.findings) || Array.isArray(v.steps)));
+    if (inner) r = inner;
+  }
+  return {
+    ...r, health: mapv(r.health, HEALTH_MAP),
+    findings: Array.isArray(r.findings) ? r.findings.map((f) => (f && typeof f === 'object' ? { ...f, severity: mapv(f.severity, SEV_MAP) } : f)) : r.findings,
+    steps: Array.isArray(r.steps) ? r.steps.map((x) => (x && typeof x === 'object' ? { ...x, horizon: mapv(x.horizon, HOR_MAP) } : x)) : r.steps,
+  };
+}
+
 // Satu teks: wajib terisi (kecuali opsional), penanda harus dikenal, dan tidak boleh ada angka karangan.
 // truncate=true (mode penyelamatan) memotong teks yang kepanjangan, bukan menolaknya.
 function checkText(v, max, name, by, errors, { required = true, truncate = false } = {}) {
@@ -41,8 +62,9 @@ const step = (s, i, by, errors, o) => ({ title: checkText(s?.title, 80, `steps[$
 const list = (v, min, max, name, errors) => { if (!Array.isArray(v) || v.length < min || v.length > max) { errors.push(`${name} harus berisi ${min} sampai ${max} butir`); return []; } return v; };
 
 // Memeriksa keluaran model secara ketat: bentuk, panjang, nilai yang diizinkan, penanda dikenal, dan tidak ada angka karangan.
-export function validateModelReport(raw, by) {
+export function validateModelReport(input, by) {
   const errors = [];
+  const raw = normalizeReport(input);
   if (!raw || typeof raw !== 'object') return { ok: false, errors: ['keluaran bukan objek'] };
   const report = {
     headline: checkText(raw.headline, 160, 'headline', by, errors),
@@ -57,7 +79,8 @@ export function validateModelReport(raw, by) {
 
 // Mode penyelamatan untuk model yang kurang rapi: buang butir yang melanggar (angka karangan, penanda palsu), potong teks kepanjangan,
 // dan terima sisanya kalau masih cukup. Angka yang tidak bisa diverifikasi tidak pernah ikut ditampilkan.
-export function salvageModelReport(raw, by, fallbackHeadline) {
+export function salvageModelReport(input, by, fallbackHeadline) {
+  const raw = normalizeReport(input);
   if (!raw || typeof raw !== 'object') return { ok: false, errors: ['keluaran bukan objek'] };
   const o = { truncate: true };
   let dropped = 0;

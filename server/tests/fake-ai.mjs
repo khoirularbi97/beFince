@@ -19,6 +19,8 @@ const inputFor = (m, n) => ({
   badheadline: { ...good, headline: 'Sisa Rp 3.200.000.' },
   long: { ...good, findings: [{ ...good.findings[0], detail: 'Kalimat panjang sekali yang diulang-ulang. '.repeat(14) + '{{net}}' }, good.findings[1]] },
   allbad: { ...good, headline: 'Sisa Rp 3.200.000.', findings: [badFinding, badFinding, badFinding], steps: [badStep, badStep] },
+  enum_variants: { ...good, health: 'Needs Attention', findings: [{ ...good.findings[0], severity: 'Warning' }, { ...good.findings[1], severity: 'positive' }], steps: [{ ...good.steps[0], horizon: '30 hari' }, { ...good.steps[1], horizon: 'this week' }] },
+  wrapped: { analysis: good },
   allbad_then_good: n === 1 ? { ...good, headline: 'Sisa Rp 3.200.000.', findings: [badFinding, badFinding, badFinding], steps: [badStep, badStep] } : good,
 }[m]);
 const GONE = { error: { message: 'The model `llama-3.3-70b-versatile` has been decommissioned and is no longer supported. SECRET-PROVIDER-ERROR-BODY', type: 'invalid_request_error', code: 'model_decommissioned' } };
@@ -42,6 +44,8 @@ const server = http.createServer((req, res) => {
       const body = JSON.parse(b), forced = body.tool_choice && typeof body.tool_choice === 'object';
       const asTool = (input) => json({ choices: [{ message: { role: 'assistant', content: null, tool_calls: [{ id: 'c1', type: 'function', function: { name: 'submit_analysis', arguments: JSON.stringify(input) } }] } }] });
       const asText = (input) => json({ choices: [{ message: { role: 'assistant', content: 'Tentu, ini hasilnya:\n```json\n' + JSON.stringify(input) + '\n```' } }] });
+      if (mode === 'truncated') return json({ choices: [{ finish_reason: 'length', message: { role: 'assistant', content: null, reasoning: 'berpikir panjang sekali...' } }] });
+      if (mode === 'effort_unsupported' && body.reasoning_effort) return json({ error: { message: 'unknown parameter reasoning_effort', code: 'invalid_request' } }, 400);
       if (mode === 'forced_unsupported' && forced) return json({ error: { message: 'tool_choice object not supported', code: 'invalid_request' } }, 400);
       if (mode === 'no_tools' && body.tools) return json({ error: { message: 'No endpoints found that support tool use', code: 'no_tools' } }, 404);
       if (mode === 'content_json' || mode === 'no_tools') return asText(good);

@@ -168,7 +168,8 @@ Skrip mencetak kata sandi sementara dan mengeluarkan semua sesi lama. Masuk deng
 | Analisa AI: "belum diaktifkan di server ini" | `AI_ENABLED` bukan `true` atau `ANTHROPIC_API_KEY` kosong | Isi di Render, lalu tunggu deploy ulang |
 | Analisa AI: "model ... tidak tersedia atau sudah dihentikan" | Nama model sudah tidak ada di penyedia | Isi `AI_MODEL` dengan model yang masih ada (cek daftar model penyedia) |
 | Analisa AI: "kunci API ditolak" | `AI_API_KEY` salah, atau tidak cocok dengan `AI_PROVIDER` | Periksa keduanya di Render |
-| Analisa AI: "jawaban model tidak lolos pemeriksaan" | Model kecil tidak mengikuti format | Coba lagi, atau pakai model yang lebih besar lewat `AI_MODEL`. Detail alasan ada di log Render (`Analisa AI gagal:`) |
+| Analisa AI: "jawaban model tidak lolos pemeriksaan" | Model tidak mengikuti format (angka karangan, bagian hilang) | Baca "Alasan teknis" di pesan. Coba lagi, atau pakai model yang lebih besar lewat `AI_MODEL`. Cuplikan jawaban yang ditolak ada di log Render (`Cuplikan keluaran model yang ditolak`) |
+| Analisa AI: "jawaban model terpotong karena batas token" | Model penalar kehabisan token sebelum selesai | Naikkan `AI_MAX_TOKENS` (misalnya 4500), atau pakai model lain |
 | Analisa AI: "Penyedia AI sedang membatasi permintaan" | Batas tingkat gratis penyedia (per menit atau per hari) | Tunggu beberapa menit; jatah harian pengguna tidak terpakai |
 | Semua pengguna keluar sendiri | `JWT_SECRET` diganti | Normal: masuk lagi. Jangan mengubahnya tanpa alasan |
 | Permintaan pertama lama sekali | Render dan Neon baru bangun | Normal di paket gratis, lihat bagian 7 |

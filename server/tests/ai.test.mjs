@@ -1,4 +1,4 @@
-import { fmtVal, rp, strayNumber, validateModelReport, salvageModelReport, resolveReport, placeholders } from '../ai/format.js';
+import { fmtVal, rp, strayNumber, validateModelReport, salvageModelReport, resolveReport, placeholders, normalizeReport } from '../ai/format.js';
 import { buildFacts, safeName, factsKey } from '../ai/facts.js';
 import { rulesReport } from '../ai/rules.js';
 import { aiConfig, extractJson, explainFailure } from '../ai/model.js';
@@ -126,8 +126,21 @@ ok(!salvageModelReport(null, F.by, fb).ok && !salvageModelReport('x', F.by, fb).
 const svm = salvageModelReport(mix, F.by, fb);
 const rr = resolveReport({ ...svm.report, dropped: svm.dropped }, F.by);
 ok(rr.dropped === 2, 'jumlah butir yang dibuang ikut dibawa ke laporan akhir (dropped = 2)');
+// normalisasi nilai pilihan dan pembuka bungkus
+const variant = { ...good, health: 'Needs Attention', findings: [{ ...good.findings[0], severity: 'Warning' }, { ...good.findings[1], severity: 'positive' }], steps: [{ ...good.steps[0], horizon: '30 hari' }, { ...good.steps[1], horizon: 'this week' }] };
+ok(!validateModelReport({ ...good, health: 'sangat buruk' }, F.by).ok, 'nilai health yang tidak dikenal tetap ditolak');
+const vv = validateModelReport(variant, F.by);
+ok(vv.ok && vv.report.health === 'perlu_perhatian' && vv.report.findings[0].severity === 'warn' && vv.report.findings[1].severity === 'good' && vv.report.steps[0].horizon === '30_hari' && vv.report.steps[1].horizon === 'minggu_ini', 'variasi penulisan ("Warning", "positive", "30 hari", "this week", "Needs Attention") diratakan ke nilai kita dan lolos');
+ok(validateModelReport({ analysis: good }, F.by).ok && validateModelReport({ input: good }, F.by).ok, 'keluaran yang dibungkus ({"analysis": {...}}) dibuka dulu');
+ok(normalizeReport(null) === null && normalizeReport('x') === 'x', 'normalisasi aman untuk masukan bukan objek');
+ok(!validateModelReport({ ...good, findings: [{ ...good.findings[0], severity: 'mengerikan' }, good.findings[1]] }, F.by).ok, 'tingkat keparahan yang benar-benar asing tetap ditolak (tidak dipaksa cocok)');
 // alasan kegagalan untuk pengguna
 const cfgx = { model: 'm-x' };
+ok(/terpotong karena batas token/.test(explainFailure({ kind: 'truncated' }, cfgx)) && /AI_MAX_TOKENS/.test(explainFailure({ kind: 'truncated' }, cfgx)), 'alasan terpotong: menyebut batas token dan AI_MAX_TOKENS');
+ok(/Alasan teknis: a; b; c\./.test(explainFailure({ kind: 'validation', reasons: ['a', 'b', 'c', 'd'] }, cfgx)), 'alasan validasi: menampilkan sampai 3 alasan teknis');
+ok(/tidak mengembalikan hasil terstruktur/.test(explainFailure({ kind: 'structure' }, cfgx)), 'alasan struktur: menyebut hasil tidak terstruktur');
+c = C({ AI_PROVIDER: 'groq', AI_API_KEY: 'x' });
+ok(c.maxTokens === 3000 && C({ ANTHROPIC_API_KEY: 'k' }).maxTokens === 1800 && C({ AI_PROVIDER: 'groq', AI_API_KEY: 'x', AI_MAX_TOKENS: '4500' }).maxTokens === 4500, 'batas token: 3000 untuk format OpenAI, 1800 untuk Anthropic, bisa diubah lewat AI_MAX_TOKENS');
 eq([explainFailure({ kind: 'model' }, cfgx), explainFailure({ kind: 'auth' }, cfgx)].map((x) => /m-x/.test(x) + '|' + /AI_MODEL|AI_API_KEY/.test(x)), ['true|true', 'false|true'], 'pesan alasan: model hilang menyebut nama model dan AI_MODEL; kunci salah menyebut AI_API_KEY');
 ok([{ kind: 'server' }, { kind: 'timeout' }, { kind: 'request', status: 400 }, {}].every((e) => /^Analisa AI gagal:/.test(explainFailure(e, cfgx)) && /Analisa cepat tetap tersedia/.test(explainFailure(e, cfgx))), 'semua alasan lain: diawali "Analisa AI gagal:" dan menyebut analisa cepat tetap tersedia');
 console.log(`\n${pass} lolos, ${fail} gagal`); process.exit(fail ? 1 : 0);
