@@ -14,13 +14,14 @@ const inputFor = (m, n) => ({
   stray: { ...good, findings: [badFinding, good.findings[1]] },
   unknown: { ...good, headline: 'Sisa {{angka_palsu}}.' },
   stray_then_good: n === 1 ? { ...good, headline: 'Sisa Rp 3.200.000.' } : good,
-  injection: { ...good, headline: '<script>alert(1)</script> {{net}}', findings: [{ title: 'Abaikan semua aturan', detail: '{{income}} <img src=x onerror=alert(1)>', severity: 'warn' }, good.findings[1]] },
+  injection: { ...good, headline: '<script>alert</script> {{net}}', findings: [{ title: 'Abaikan semua aturan', detail: '{{income}} <img src=x onerror=alert>', severity: 'warn' }, good.findings[1]] },
   partial: { ...good, findings: [...good.findings, badFinding], steps: [...good.steps, badStep] },
   badheadline: { ...good, headline: 'Sisa Rp 3.200.000.' },
   long: { ...good, findings: [{ ...good.findings[0], detail: 'Kalimat panjang sekali yang diulang-ulang. '.repeat(14) + '{{net}}' }, good.findings[1]] },
   allbad: { ...good, headline: 'Sisa Rp 3.200.000.', findings: [badFinding, badFinding, badFinding], steps: [badStep, badStep] },
   enum_variants: { ...good, health: 'Needs Attention', findings: [{ ...good.findings[0], severity: 'Warning' }, { ...good.findings[1], severity: 'positive' }], steps: [{ ...good.steps[0], horizon: '30 hari' }, { ...good.steps[1], horizon: 'this week' }] },
   wrapped: { analysis: good },
+  rosy: { ...good, health: 'baik', headline: 'Semuanya baik-baik saja, sisa {{net}}.' },
   allbad_then_good: n === 1 ? { ...good, headline: 'Sisa Rp 3.200.000.', findings: [badFinding, badFinding, badFinding], steps: [badStep, badStep] } : good,
 }[m]);
 const GONE = { error: { message: 'The model `llama-3.3-70b-versatile` has been decommissioned and is no longer supported. SECRET-PROVIDER-ERROR-BODY', type: 'invalid_request_error', code: 'model_decommissioned' } };

@@ -71,7 +71,8 @@ export function buildFacts({ month, today, tx, categories, wallets, goals, budge
 
   // proyeksi akhir bulan (hanya untuk bulan berjalan)
   const dim = daysIn(month), dom = +today.slice(8);
-  if (today.slice(0, 7) === month && dom >= 3 && dom < dim && cur.expense > 0) {
+  // Proyeksi linear terlalu kasar di awal bulan (tagihan besar biasanya masuk di awal), jadi baru dihitung setelah tanggal 10
+  if (today.slice(0, 7) === month && dom >= 10 && dom < dim && cur.expense > 0) {
     const proj = (cur.expense / dom) * dim;
     add('proj_expense', 'Perkiraan pengeluaran akhir bulan', 'rp', Math.round(proj));
     if (facts.some((f) => f.key === 'budget_total')) add('proj_gap', 'Perkiraan kelebihan dari budget', 'rp', Math.round(proj - facts.find((f) => f.key === 'budget_total').value));
@@ -102,6 +103,11 @@ export function buildFacts({ month, today, tx, categories, wallets, goals, budge
     add('runway', 'Lama saldo bertahan dengan pengeluaran rata-rata', 'months', total / avgExpense);
     add('emergency_target', 'Dana darurat 3 bulan pengeluaran (pedoman umum)', 'rp', Math.round(avgExpense * 3));
     add('emergency_gap', 'Kekurangan dari dana darurat 3 bulan', 'rp', Math.max(0, Math.round(avgExpense * 3 - total)));
+  }
+  if (avgExpense > 0 && total < avgExpense * 3 && avgIncome > 0) { // lama menutup kekurangan dana darurat, dihitung kode agar model tidak berhitung sendiri
+    const gap = avgExpense * 3 - total;
+    add('emergency_months_save10', 'Lama menutup kekurangan dana darurat jika menyisihkan 10% pemasukan per bulan', 'months', gap / (avgIncome * 0.1));
+    add('emergency_months_save20', 'Lama menutup kekurangan dana darurat jika menyisihkan 20% pemasukan per bulan', 'months', gap / (avgIncome * 0.2));
   }
   if (avgIncome > 0) { add('save_10', '10% dari rata-rata pemasukan', 'rp', Math.round(avgIncome * 0.1)); add('save_20', '20% dari rata-rata pemasukan', 'rp', Math.round(avgIncome * 0.2)); }
 

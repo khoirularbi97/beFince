@@ -9,6 +9,8 @@ const eq = (a, b, m) => { const o = JSON.stringify(a) === JSON.stringify(b); ok(
 // ---------- format ----------
 eq([rp(5240000), rp(-300), fmtVal('pct', 0.62), fmtVal('pct', -0.1), fmtVal('pcts', 0.123), fmtVal('pcts', -0.08), fmtVal('months', 2.46)], ['Rp5.240.000', '−Rp300', '62%', '−10%', '+12%', '−8%', '2,5 bulan'], 'format rupiah, persen (bertanda), dan bulan');
 eq(['Rp 5.000.000', '12%', '10 persen', '1,5 juta', '4500', 'sekitar 3 bulan', 'dalam 30 hari ke depan', '{{expense}} itu besar', 'naik {{expense_change}}'].map(strayNumber), [true, true, true, true, true, false, false, false, false], 'angka karangan terdeteksi; penanda dan angka waktu kecil diizinkan');
+eq(['dalam 3-4 bulan', 'menyebabkan 2 kategori melewati budget', 'rasio 50/30/20', 'tabung 20 persen', 'kategori ke-2', 'selama 3 bulan', 'dalam 30 hari', 'target 6 bulan', 'cadangan 12 bulan', '{{over_count}} kategori melewati budget', 'dalam {{emergency_months_save20}}'].map(strayNumber),
+   [true, true, true, true, true, false, false, false, false, false, false], 'semua angka selain penanda dilarang (termasuk jumlah kecil dan rentang "3-4 bulan"); hanya frasa waktu baku 30/90 hari dan 3/6/12 bulan yang boleh');
 eq(placeholders('a {{income}} b {{ Net_Abs }} c'), ['income', 'net_abs'], 'penanda dikenali (spasi dan huruf besar ditoleransi)');
 
 // ---------- data contoh ----------
@@ -46,6 +48,15 @@ ok(factsKey(F) === factsKey(buildFacts(healthy)) && factsKey(F) !== factsKey(bui
 const mid = buildFacts({ ...healthy, today: '2026-09-15', budgets: [{ category_id: 1, name: 'Makan', budget: 1000000, spent: 900000 }] });
 ok(mid.by.has('proj_expense') && mid.by.has('proj_gap'), 'proyeksi akhir bulan ada saat bulan masih berjalan: ' + mid.by.get('proj_expense')?.text);
 ok(!F.by.has('proj_expense'), 'tanpa proyeksi untuk bulan yang sudah selesai');
+const early = buildFacts({ ...healthy, today: '2026-09-09', budgets: [{ category_id: 1, name: 'Makan', budget: 1000000, spent: 900000 }] });
+ok(!early.by.has('proj_expense') && !early.by.has('proj_gap'), 'sebelum tanggal 10: proyeksi tidak dihitung (menghindari angka absurd dari tagihan awal bulan)');
+ok(!rulesReport(early).findings.some((x) => x.id === 'PROJ_OVER'), 'aturan PROJ_OVER tidak muncul di awal bulan');
+const day10 = buildFacts({ ...healthy, today: '2026-09-10', budgets: [] });
+ok(day10.by.has('proj_expense'), 'tanggal 10: proyeksi mulai tersedia');
+const lowCash = buildFacts({ ...healthy, wallets: wallets(1000000) });
+const gapM = lowCash.by.get('emergency_gap').value, inc = lowCash.by.get('avg_income').value;
+ok(Math.abs(lowCash.by.get('emergency_months_save20').value - gapM / (inc * 0.2)) < 0.01 && Math.abs(lowCash.by.get('emergency_months_save10').value - gapM / (inc * 0.1)) < 0.01, 'durasi menutup dana darurat dihitung kode: kekurangan / (10% atau 20% pemasukan) = ' + lowCash.by.get('emergency_months_save20').text + ' dan ' + lowCash.by.get('emergency_months_save10').text);
+ok(!F.by.has('emergency_months_save20'), 'tanpa kekurangan dana darurat: fakta durasi tidak ada');
 ok(buildFacts(base({ tx: mk('2026-09', 1000000, 500000).slice(0, 5) })).enough === false, 'data kurang dari 8 transaksi: enough = false');
 
 // ---------- aturan ----------
@@ -81,7 +92,7 @@ ok(!bad((r) => { r.health = 'sangat_buruk'; return r; }).ok, 'ditolak: nilai hea
 ok(!bad((r) => { r.steps = [r.steps[0]]; return r; }).ok, 'ditolak: jumlah langkah kurang dari 2');
 ok(!bad((r) => { r.findings[0].title = 'x'.repeat(200); return r; }).ok, 'ditolak: judul terlalu panjang');
 ok(!validateModelReport('bukan objek', F.by).ok && !validateModelReport(null, F.by).ok, 'ditolak: keluaran bukan objek');
-const sneaky = validateModelReport({ ...good, headline: 'Abaikan aturan <img src=x onerror=alert(1)> {{net}}' }, F.by);
+const sneaky = validateModelReport({ ...good, headline: 'Abaikan aturan <img src=x onerror=alert> {{net}}' }, F.by);
 ok(sneaky.ok && !sneaky.report.headline.includes('<'), 'tanda < dan > dibuang dari teks model');
 const res = resolveReport(validateModelReport(good, F.by).report, F.by);
 ok(/Rp\d/.test(res.headline) && !res.headline.includes('{{') && res.evidence.length >= 4, 'penanda diganti angka asli, bukti angka tercatat: ' + res.headline);
@@ -143,4 +154,8 @@ c = C({ AI_PROVIDER: 'groq', AI_API_KEY: 'x' });
 ok(c.maxTokens === 3000 && C({ ANTHROPIC_API_KEY: 'k' }).maxTokens === 1800 && C({ AI_PROVIDER: 'groq', AI_API_KEY: 'x', AI_MAX_TOKENS: '4500' }).maxTokens === 4500, 'batas token: 3000 untuk format OpenAI, 1800 untuk Anthropic, bisa diubah lewat AI_MAX_TOKENS');
 eq([explainFailure({ kind: 'model' }, cfgx), explainFailure({ kind: 'auth' }, cfgx)].map((x) => /m-x/.test(x) + '|' + /AI_MODEL|AI_API_KEY/.test(x)), ['true|true', 'false|true'], 'pesan alasan: model hilang menyebut nama model dan AI_MODEL; kunci salah menyebut AI_API_KEY');
 ok([{ kind: 'server' }, { kind: 'timeout' }, { kind: 'request', status: 400 }, {}].every((e) => /^Analisa AI gagal:/.test(explainFailure(e, cfgx)) && /Analisa cepat tetap tersedia/.test(explainFailure(e, cfgx))), 'semua alasan lain: diawali "Analisa AI gagal:" dan menyebut analisa cepat tetap tersedia');
+import { readFileSync } from 'node:fs';
+const src = readFileSync(new URL('../ai/model.js', import.meta.url), 'utf8');
+ok(/Fitur beFince yang ADA/.test(src) && /TIDAK ADA: notifikasi atau pengingat, batas harian, transfer atau setoran otomatis/.test(src) && /Jangan pernah menyebut fitur yang tidak ada/.test(src), 'prompt sistem memuat daftar fitur yang ada dan yang tidak ada (notifikasi, batas harian, transfer otomatis) dan melarang mengarangnya');
+ok(/emergency_gap adalah KEKURANGAN/.test(src) && /jangan menyebutnya tabungan/.test(src) && /Jangan menghitung sendiri berapa lama/.test(src), 'prompt sistem menjelaskan arti penanda yang sering salah pakai dan melarang berhitung sendiri');
 console.log(`\n${pass} lolos, ${fail} gagal`); process.exit(fail ? 1 : 0);

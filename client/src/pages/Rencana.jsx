@@ -43,7 +43,7 @@ function BudgetSection({ month, ver, refresh }) {
   const cur = cum[day - 1] || 0, proj = (cur / day) * n;
   const msg = day === n
     ? `Bulan selesai. Total pengeluaran ${jt(cur)}${tb ? `, ${Math.round((cur / tb) * 100)}% dari budget.` : '.'}`
-    : `Pada tanggal ${day} pengeluaran ${jt(cur)}. Jika laju ini berlanjut, akhir bulan sekitar ${jt(proj)}${
+    : `Pada tanggal ${day} pengeluaran ${jt(cur)}. ${day < 10 ? 'Masih awal bulan, jadi perkiraan ini kasar karena tagihan besar biasanya masuk di awal. ' : ''}Jika laju ini berlanjut, akhir bulan sekitar ${jt(proj)}${
       !tb ? '.' : proj > tb ? `, melewati budget ${jt(proj - tb)}.` : `, masih aman dengan sisa ${jt(tb - proj)}.`}`;
 
   return (

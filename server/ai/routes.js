@@ -92,6 +92,9 @@ aiRouter.post('/ai/analysis', wrap(async (req, res) => {
     throw new HttpError(502, explainFailure(e, cfg));
   }
   const report = { ...resolveReport(out.report, F.by), source: 'ai', month };
+  // Aturan yang pasti (mis. saldo kurang dari sebulan) tidak boleh dilunakkan model: ambil tingkat yang lebih berat
+  const RANK = { baik: 0, perlu_perhatian: 1, waspada: 2 }, rh = rulesReport(F).health;
+  if (RANK[rh] > RANK[report.health]) report.health = rh;
   await q('INSERT INTO ai_reports (user_id, month, facts_key, model, report) VALUES ($1,$2,$3,$4,$5)', [req.userId, month, key, out.model, JSON.stringify(report)]);
   res.json({ source: 'ai', cached: false, report: { ...report, model: out.model, created_at: new Date().toISOString() }, remaining: Math.max(0, cfg.limit - use.calls) });
 }));

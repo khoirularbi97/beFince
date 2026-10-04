@@ -18,8 +18,10 @@ export const resolveText = (text, by, used) => String(text).replace(PH(), (_m, k
   return f.text;
 });
 
-// Angka yang ditulis sendiri oleh model dilarang (nominal, persen, desimal, angka 3 digit ke atas). Angka waktu kecil seperti "3 bulan" atau "30 hari" boleh.
-export const strayNumber = (text) => /rp\s*\d|\d\s*%|\d\s*persen|\d[.,]\d|\b\d{3,}\b/i.test(String(text).replace(PH(), ' '));
+// Model dilarang menulis angka sendiri (nominal, persen, jumlah, rentang seperti "3-4 bulan"). Semua angka lewat penanda {{kunci}}.
+// Satu-satunya pengecualian adalah frasa waktu baku yang jadi pedoman umum: 30/90 hari, 3/6/12 bulan, 1-2 minggu.
+const OK_TIME = /\b(7|14|30|90)\s+hari\b|\b(1|3|6|12)\s+bulan\b|\b(1|2)\s+minggu\b/gi;
+export const strayNumber = (text) => /\d/.test(String(text).replace(PH(), ' ').replace(OK_TIME, ' '));
 
 const HEALTH = ['baik', 'perlu_perhatian', 'waspada'], SEV = ['good', 'info', 'warn'], HOR = ['minggu_ini', '30_hari', '3_bulan'];
 const clean = (s) => String(s).replace(/[\u0000-\u001f\u007f<>]/g, ' ').replace(/\s+/g, ' ').trim();

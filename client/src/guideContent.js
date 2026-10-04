@@ -110,7 +110,7 @@ export const GUIDE = [
         'Bulan baru otomatis memakai budget bulan sebelumnya sampai kamu mengubahnya.',
         '**Isi dari rata-rata 3 bulan terakhir** mengisi angka awal dari pengeluaranmu sendiri. Angkanya tetap bisa kamu ubah.',
         'Warna bar: hijau berarti aman, kuning berarti sudah 90% atau lebih, merah berarti melewati budget.',
-        '**Proyeksi akhir bulan**: garis putus-putus memperkirakan total pengeluaran akhir bulan kalau laju sekarang berlanjut. Geser **Simulasi** untuk mencoba tanggal lain.',
+        '**Proyeksi akhir bulan**: garis putus-putus memperkirakan total pengeluaran akhir bulan kalau laju sekarang berlanjut. Geser **Simulasi** untuk mencoba tanggal lain. Sebelum tanggal 10 perkiraannya kasar, karena tagihan besar biasanya masuk di awal bulan, dan analisa tidak membahas proyeksi sebelum tanggal itu.',
       ] },
     ],
   },
