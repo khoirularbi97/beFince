@@ -29,6 +29,72 @@ budget, tren, pola pengeluaran per hari dalam seminggu, target tabungan, dan eks
    E-wallet) dan kategori awal. Saldo awal dompet diisi lewat `PUT /api/wallets/:id` atau SQL Editor Neon.
 5. Opsional, data contoh untuk akun yang masih kosong: `npm run db:seed -- email@anda.com`
 
+## Analisa dan saran keuangan (AI opsional)
+
+Di tab Ringkasan, kartu **Analisa cepat** membuka halaman analisa: kesimpulan, temuan, dan langkah ke depan (minggu ini, 30 hari, 3 bulan).
+
+**Analisa cepat (selalu ada, tanpa AI).** Server menghitung sisa uang, perubahan dari bulan lalu, kategori terbesar dan lonjakannya, budget dan proyeksi
+akhir bulan, dana darurat (pedoman umum 3 bulan pengeluaran), pola akhir pekan, dan kemajuan target tabungan, lalu menyusun temuan dan langkah
+dari aturan di `server/ai/rules.js`. Tidak ada data yang keluar dari server.
+
+**Analisa AI (opsional, mati secara bawaan).** AI menyusun kalimat dan prioritas dari angka yang sama. Cara mengaktifkan di server:
+
+```
+AI_ENABLED=true
+AI_PROVIDER=groq             # anthropic (bawaan) | groq | gemini | openrouter | openai | compat
+AI_API_KEY=...               # kunci API penyedia itu, simpan sebagai rahasia (jangan di-commit)
+AI_MODEL=...                 # opsional untuk anthropic, groq, gemini; wajib untuk openrouter, openai, compat
+AI_BASE_URL=...              # hanya untuk compat, atau menimpa alamat bawaan
+AI_DAILY_LIMIT=5             # opsional; batas per pengguna per hari
+```
+
+### Analisa AI gratis
+
+Ada beberapa penyedia dengan tingkat gratis. Batas dan kebijakannya berubah-ubah, jadi cek halaman resminya sebelum bergantung padanya.
+
+| Penyedia | `AI_PROVIDER` | Model bawaan | Catatan |
+|---|---|---|---|
+| **Groq** (paling mudah) | `groq` | `llama-3.3-70b-versatile` | Tingkat gratis tanpa kartu kredit, dengan batas per menit dan per hari yang berbeda tiap model. Katalog modelnya sering berganti. |
+| **Google Gemini** | `gemini` | `gemini-2.5-flash` | Ada tingkat gratis untuk beberapa model lewat Google AI Studio. **Di tingkat gratis, prompt dan jawaban boleh dipakai Google untuk memperbaiki produknya**; tingkat berbayar tidak. |
+| **OpenRouter** | `openrouter` | (wajib isi `AI_MODEL`) | Model berlabel `:free` punya batas permintaan harian yang kecil, dan daftarnya sering berganti. |
+| Server sendiri / lainnya | `compat` | (wajib isi `AI_MODEL`, `AI_BASE_URL`) | Server apa pun yang meniru Chat Completions OpenAI, misalnya Ollama. Server Render tidak bisa menjangkau laptopmu, jadi servernya harus bisa diakses dari internet. |
+
+Contoh Groq di Render: `AI_ENABLED=true`, `AI_PROVIDER=groq`, `AI_API_KEY=` (kunci dari console.groq.com, menu API Keys). Model bawaan dipakai otomatis.
+
+Hal-hal yang berlaku untuk penyedia gratis:
+
+- **Model gratis lebih kecil.** Kemampuan mengikuti format terstruktur berbeda-beda. Pemeriksa kita menolak keluaran yang melenceng lalu kembali ke Analisa cepat, jadi hasilnya aman tapi AI-nya kadang tidak muncul. Kalau terlalu sering gagal, coba model yang lebih besar.
+- **Batas dari penyedia (429).** Kalau penyedia membatasi permintaan, pengguna melihat pesan jelas dan jatah hariannya dikembalikan.
+- **Penyesuaian otomatis.** Kalau sebuah penyedia menolak bentuk permintaan memakai fungsi, aplikasi turun otomatis ke cara yang lebih sederhana (fungsi otomatis, lalu JSON di isi pesan).
+- **Kebijakan data.** Baca ketentuan penyedia sebelum mengizinkan. Yang dikirim hanya ringkasan angka, tapi tetap data keuangan. Aplikasi menampilkan nama penyedia di layar izin.
+
+Aturan keamanannya:
+
+- **Izin per pengguna.** AI hanya jalan setelah pengguna menekan "Izinkan dan buat analisa AI" dan membaca apa yang dikirim. Izin bisa dicabut, dan laporan tersimpan ikut terhapus.
+- **Data minimum.** Yang dikirim hanya ringkasan angka (total, kategori terbesar, budget, saldo, target). Catatan transaksi, nama, email, nomor rekening, dan daftar transaksi tidak dikirim. Ini diuji: uji API memastikan teks catatan dan nomor rekening tidak ada di permintaan ke penyedia.
+- **Angka tidak ditebak model.** Model hanya boleh menulis penanda `{{kunci}}`; server menggantinya dengan angka hasil hitungan. Keluaran yang memuat nominal, persen, atau penanda yang tidak ada ditolak, dicoba ulang sekali, lalu jatuh kembali ke analisa cepat.
+- **Hasil terstruktur.** Memakai tool use dengan skema tetap, jadi model tidak bisa mengembalikan teks bebas. Tanda `<` dan `>` dibuang dari teksnya.
+- **Biaya terkendali.** Batas harian per pengguna (percobaan yang gagal tetap dihitung), hasil yang sama dipakai ulang selama angkanya tidak berubah, batas waktu 40 detik, dan keluaran dibatasi panjangnya. Cek harga model terbaru di situs penyedia.
+- **Bukan nasihat profesional.** Prompt melarang rekomendasi produk investasi, pajak, dan hukum, dan halaman menampilkan penafian.
+
+**Catatan jujur:** bagian AI diuji dengan penyedia palsu yang meniru format Anthropic dan OpenAI (`server/tests/fake-ai.mjs`), bukan dengan API sungguhan.
+Nama model dan alamat bawaan diperiksa dari dokumentasi penyedia, tapi belum dipanggil dengan kunci asli. Coba dulu dengan kunci milikmu dan periksa hasilnya.
+Untuk mencoba tanpa kunci: `node server/tests/fake-ai.mjs`, lalu set `AI_ENABLED=true`, `AI_PROVIDER=compat`, `AI_API_KEY=apa-saja`,
+`AI_BASE_URL=http://localhost:4200/openai/v1`, dan `AI_MODEL=uji`. Hasil dari penyedia palsu hanya contoh tetap.
+
+## Geser antar tab
+
+Di HP, geser layar ke kiri atau kanan untuk pindah ke tab berikutnya atau sebelumnya (Ringkasan, Transaksi, Dompet, Tren, Rencana).
+Halaman baru masuk dari arah geseran, dan ketuk menu bawah memakai arah animasi yang sama. Geseran diabaikan, supaya tidak salah pindah, kalau:
+
+- ada jendela terbuka, atau halaman Panduan, Kelola, atau Impor mutasi sedang dibuka (data pratinjau impor tidak hilang),
+- kamu sedang mengetik di sebuah isian,
+- sentuhan dimulai di tepi layar (dibiarkan untuk gestur kembali milik HP), memakai dua jari, terlalu pendek, terlalu miring, atau terlalu lambat,
+- sentuhan berada di area yang punya geseran sendiri, yaitu daftar kartu dompet, deret chip, dan slider.
+
+Di ujung (Ringkasan atau Rencana) geseran tidak berputar. Pengaturan "kurangi gerakan" di HP dihormati: tetap pindah, tanpa animasi.
+Logikanya ada di `client/src/swipe.js`.
+
 ## Panduan pengguna
 
 Ketuk tombol **?** di pojok atas (atau menu Akun > Panduan pengguna). Isinya 16 bagian yang bisa dibuka satu per satu dan dicari:
@@ -120,6 +186,7 @@ sebelum menyimpan, dan kalau ada format yang salah terbaca, kirim contoh PDF asl
 - `JWT_SECRET` wajib diisi (minimal 32 karakter). Kalau bocor, orang bisa memalsukan login: ganti nilainya dan semua sesi otomatis tidak berlaku.
 - Setelah akunmu dibuat, isi `ALLOW_REGISTRATION=false` di server supaya orang lain tidak bisa mendaftar.
 - Percobaan masuk, daftar, dan ganti kata sandi dibatasi 30 kali per 15 menit per alamat IP (dihitung bersama).
+- Setiap kolom kata sandi (masuk, daftar, ganti kata sandi) punya **tombol mata** untuk menampilkan atau menyembunyikan isinya. Kolom selalu mulai tersembunyi, dan tombolnya tidak mencuri fokus dari isian.
 - **Ganti kata sandi**: menu Akun (inisial nama di pojok atas) > Ganti kata sandi. Setelah diganti, sesi di perangkat
   lain otomatis keluar, sedangkan perangkat yang dipakai tetap masuk.
 - **Lupa kata sandi**: belum ada pemulihan lewat email. Sebagai pemilik server, jalankan
@@ -149,5 +216,5 @@ Ringkasnya: kode ke GitHub, buat database di Neon, deploy backend ke Render lewa
 Tanpa login: `GET /api/health`, `GET /api/health/db`, `POST /api/auth/register`, `POST /api/auth/login`.
 Perlu login: `GET /api/auth/me`, `PUT /api/auth/password`, `GET /api/meta`, `GET|POST /api/transactions`, `PUT|DELETE /api/transactions/:id`, `POST /api/import/check|commit`,
 `GET|POST /api/wallets`, `PUT|DELETE /api/wallets/:id`, `GET|POST /api/categories`, `PUT|DELETE /api/categories/:id` (hapus: `?move_to=ID`), `POST /api/transfers`, `GET|PUT /api/budgets`, `GET /api/budgets/suggest`,
-`GET|POST /api/goals`, `PUT|DELETE /api/goals/:id`, `GET|POST /api/goals/:id/deposits`, `PUT|DELETE /api/goals/:id/deposits/:depId`, `GET /api/reports/monthly|trend|weekday`,
+`GET|POST /api/goals`, `PUT|DELETE /api/goals/:id`, `GET|POST /api/goals/:id/deposits`, `PUT|DELETE /api/goals/:id/deposits/:depId`, `GET /api/reports/monthly|trend|weekday`, `GET /api/insights`, `POST /api/ai/consent`, `POST /api/ai/analysis`,
 `GET /api/export/csv|pdf?month=YYYY-MM`.

@@ -221,3 +221,34 @@ header .month button{border-color:transparent;box-shadow:none;background:transpa
 /* layar sempit (320px): kolom teks pada baris transaksi boleh mengecil dan membungkus, supaya halaman tidak bisa digeser ke samping */
 .tx{grid-template-columns:38px minmax(0,1fr) auto}
 .tx small{overflow-wrap:anywhere}
+
+/* ===== geser antar tab: halaman baru masuk dari arah geseran ===== */
+.pg{display:grid;gap:16px;min-width:0}
+main{overflow-x:clip}
+@media (prefers-reduced-motion:no-preference){
+  .pg.from-right{animation:slideR .26s cubic-bezier(.2,.8,.2,1)}
+  .pg.from-left{animation:slideL .26s cubic-bezier(.2,.8,.2,1)}
+  @keyframes slideR{from{opacity:0;transform:translateX(32px)}}
+  @keyframes slideL{from{opacity:0;transform:translateX(-32px)}}
+}
+
+/* ===== kata sandi: tombol mata ===== */
+.pw{position:relative;display:block}
+.pw>input{padding-right:46px !important}
+.pw-eye{position:absolute;right:4px;top:50%;transform:translateY(-50%);width:38px;height:38px;border:0;border-radius:50%;background:transparent;color:var(--muted);display:grid;place-items:center;cursor:pointer;padding:0}
+.pw-eye:hover,.pw-eye[aria-pressed="true"]{color:var(--ink)}
+
+/* ===== analisa keuangan ===== */
+.tag{font-size:.78rem;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:3px 10px;white-space:nowrap}
+.rep h3{font-size:.95rem;margin:16px 0 6px}
+.rep h4{font-size:.85rem;color:var(--muted);margin:10px 0 4px;font-weight:600}
+.rep-head{margin:0;line-height:1.5}
+.pill{display:inline-block;font-size:.78rem;font-weight:700;border-radius:999px;padding:2px 10px;margin-right:6px;vertical-align:1px}
+.pill.ok{background:var(--soft-in);color:var(--in)}.pill.mid{background:color-mix(in srgb,var(--warn) 22%,transparent);color:var(--warn)}.pill.bad{background:var(--soft-out);color:var(--out)}
+.fnd,.plain{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.fnd li{display:flex;gap:10px}.fnd li>div{display:grid;gap:2px}.fnd span{color:var(--muted);font-size:.92rem}
+.plain{padding-left:18px;list-style:disc;gap:4px;font-size:.92rem}
+.stp ol{margin:0;padding-left:20px;display:grid;gap:10px}
+.stp li{display:grid;gap:2px}.stp li span{color:var(--ink);font-size:.93rem}.stp li small{color:var(--muted)}
+.ev{margin-top:14px;font-size:.9rem}.ev summary{cursor:pointer;color:var(--muted)}
+.consent{display:grid;gap:10px}.consent ul{margin:0;padding-left:20px;display:grid;gap:6px;font-size:.93rem}

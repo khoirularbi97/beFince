@@ -74,3 +74,21 @@ export function MoneyInput({ value, onChange, className = '', ...rest }) {
     </span>
   );
 }
+
+// Isian kata sandi dengan tombol mata untuk menampilkan atau menyembunyikan. Selalu mulai tersembunyi.
+const eyeProps = { width: 20, height: 20, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': 'true' };
+const Eye = () => <svg {...eyeProps}><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" /></svg>;
+const EyeOff = () => <svg {...eyeProps}><path d="M3 3l18 18" /><path d="M10.6 5.1A10.7 10.7 0 0112 5c6.4 0 10 7 10 7a17.6 17.6 0 01-3.2 4.1M6.5 6.6C3.8 8.3 2 12 2 12s3.6 7 10 7a9.9 9.9 0 004.4-1" /><path d="M9.9 9.9a3 3 0 004.2 4.2" /></svg>;
+export function PasswordInput({ className = '', ...rest }) {
+  const [show, setShow] = useState(false);
+  const name = String(rest['aria-label'] || 'Kata sandi').toLowerCase();
+  return (
+    <span className={'pw ' + className}>
+      <input {...rest} type={show ? 'text' : 'password'} autoCapitalize="none" autoCorrect="off" spellCheck={false} />
+      <button type="button" className="pw-eye" aria-pressed={show} aria-label={`${show ? 'Sembunyikan' : 'Tampilkan'} ${name}`}
+        onMouseDown={(e) => e.preventDefault() /* jaga fokus dan posisi kursor di isian */} onClick={() => setShow((v) => !v)}>
+        {show ? <EyeOff /> : <Eye />}
+      </button>
+    </span>
+  );
+}

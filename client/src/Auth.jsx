@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { api, auth } from './api';
-import { Err, WAKE_HINT, useSlow } from './ui';
+import { Err, PasswordInput, WAKE_HINT, useSlow } from './ui';
 import { LogoFull } from './Logo';
 
 export default function AuthScreen({ onAuthed, notice }) {
@@ -39,7 +39,7 @@ export default function AuthScreen({ onAuthed, notice }) {
         <form onSubmit={submit}>
           {reg && <input required maxLength="60" placeholder="Nama" aria-label="Nama" autoComplete="name" value={f.name} onChange={(e) => set('name', e.target.value)} />}
           <input required type="email" maxLength="120" placeholder="Email" aria-label="Email" autoComplete="email" value={f.email} onChange={(e) => set('email', e.target.value)} />
-          <input required type="password" minLength={reg ? 8 : undefined} maxLength="128" placeholder={reg ? 'Kata sandi (minimal 8 karakter)' : 'Kata sandi'} aria-label="Kata sandi"
+          <PasswordInput key={mode} required minLength={reg ? 8 : undefined} maxLength="128" placeholder={reg ? 'Kata sandi (minimal 8 karakter)' : 'Kata sandi'} aria-label="Kata sandi"
             autoComplete={reg ? 'new-password' : 'current-password'} value={f.password} onChange={(e) => set('password', e.target.value)} />
           {notice && !err && <p className="note">{notice}</p>}
           {busy && slow && <p className="note">{WAKE_HINT}</p>}

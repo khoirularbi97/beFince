@@ -78,6 +78,25 @@ CREATE TABLE IF NOT EXISTS goal_deposits (
 );
 
 ALTER TABLE users ADD COLUMN IF NOT EXISTS token_version INT NOT NULL DEFAULT 0;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS ai_consent_at TIMESTAMPTZ;   -- izin mengirim ringkasan angka ke penyedia AI (kosong = tidak ada izin)
+
+-- Analisa AI: laporan terakhir (dipakai ulang kalau angkanya tidak berubah) dan pemakaian harian
+CREATE TABLE IF NOT EXISTS ai_reports (
+  id SERIAL PRIMARY KEY,
+  user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  month CHAR(7) NOT NULL,
+  facts_key TEXT NOT NULL,
+  model TEXT NOT NULL,
+  report JSONB NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_ai_reports_user_month ON ai_reports (user_id, month, id DESC);
+CREATE TABLE IF NOT EXISTS ai_usage (
+  user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  day DATE NOT NULL,
+  calls INT NOT NULL DEFAULT 0,
+  PRIMARY KEY (user_id, day)
+);
 
 -- Upgrade dari versi tanpa login: tambahkan user_id (dibiarkan kosong sampai diklaim lewat npm run db:claim)
 ALTER TABLE transactions  ADD COLUMN IF NOT EXISTS source TEXT NOT NULL DEFAULT 'manual' CHECK (source IN ('manual','import'));

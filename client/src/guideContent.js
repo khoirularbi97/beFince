@@ -9,7 +9,8 @@ export const GUIDE = [
     blocks: [
       { t: 'p', x: 'Ikuti daftar di atas dari atas ke bawah. Tanda ✓ muncul otomatis begitu langkahnya selesai.' },
       { t: 'tip', x: '**Saldo awal itu penting.** Isi dengan uang yang sudah ada di tiap dompet sebelum kamu mulai mencatat. Dari situ saldo dompet dihitung: saldo awal ditambah pemasukan, dikurangi pengeluaran. Kalau saldo awal salah, saldo dompetmu ikut salah.' },
-      { t: 'p', x: 'Semua bagian aplikasi menampilkan data **bulan yang dipilih**. Ganti bulan dengan tombol ‹ dan › di pojok atas.' },
+      { t: 'p', x: 'Semua bagian aplikasi menampilkan data **bulan yang dipilih**. Ganti bulan dengan tombol ‹ dan › di bawah logo.' },
+      { t: 'p', x: '**Pindah antar tab:** ketuk menu di bawah, atau **geser layar ke kiri dan kanan**. Geser tidak aktif kalau ada jendela terbuka, saat mengisi atau memeriksa impor mutasi, saat mengetik, atau saat menggeser daftar dompet dan slider.' },
     ],
   },
   {
@@ -78,6 +79,22 @@ export const GUIDE = [
         '**Perubahan per kategori** membandingkan pengeluaran tiap kategori dengan bulan lalu.',
       ] },
       { t: 'tip', x: 'Tren baru berguna setelah beberapa bulan terisi. Impor mutasi bulan-bulan lalu untuk mengisinya.' },
+    ],
+  },
+  {
+    id: 'analisa', icon: '🧠', title: 'Analisa dan saran keuangan', summary: 'Temuan dan langkah ke depan, AI bersifat opsional',
+    refs: ['Analisa cepat', 'Lihat analisa dan saran', 'Izinkan dan buat analisa AI', 'Buat analisa AI baru', 'Cabut izin AI'],
+    blocks: [
+      { t: 'steps', x: ['Buka tab **Ringkasan**, lalu ketuk **Lihat analisa dan saran** di kartu **Analisa cepat**.', 'Baca temuan dan langkah ke depan, dikelompokkan menurut waktunya: minggu ini, 30 hari, dan 3 bulan.'] },
+      { t: 'p', x: '**Analisa cepat** selalu tersedia dan tanpa AI. Aplikasi menghitung sisa uang, perubahan dari bulan lalu, kategori terbesar, budget, proyeksi akhir bulan, dana darurat (pedoman umum: sekitar 3 bulan pengeluaran), dan kemajuan target tabungan, lalu menyusun temuan dan langkah dari aturan. Tidak ada data yang dikirim ke pihak lain.' },
+      { t: 'p', x: '**Analisa AI** bersifat opsional dan hanya ada kalau pemilik server mengaktifkannya. Kamu perlu memberi izin dulu lewat **Izinkan dan buat analisa AI**. Yang dikirim hanya ringkasan angka (total, kategori terbesar, budget, saldo, target). Catatan transaksi, nama, email, dan nomor rekening tidak ikut terkirim. Izin bisa dicabut kapan saja lewat **Cabut izin AI**, dan laporan AI yang tersimpan ikut terhapus.' },
+      { t: 'list', x: [
+        'Semua angka dihitung aplikasi. AI hanya menyusun kalimat dan memilih prioritas, dan angka yang ia tulis dicek ulang oleh aplikasi sebelum ditampilkan.',
+        'Analisa AI dibatasi beberapa kali per hari. Kalau datanya tidak berubah, hasil yang sama dipakai ulang tanpa memakai jatah. **Buat analisa AI baru** memakai jatah.',
+        'Butuh minimal 8 transaksi dalam 3 bulan terakhir. Kalau data masih sedikit, analisa menyebutnya dan tidak menebak.',
+        '**Angka yang dipakai** di bagian bawah laporan menunjukkan dari mana tiap angka berasal.',
+      ] },
+      { t: 'warn', x: 'Ini saran umum untuk membantu mengatur uang, bukan nasihat keuangan profesional, dan bukan rekomendasi produk investasi. Anggap sebagai bahan pertimbangan, dan sesuaikan dengan keadaanmu.' },
     ],
   },
   {
@@ -176,6 +193,7 @@ export const GUIDE = [
     blocks: [
       { t: 'list', x: [
         '**Ganti kata sandi**: ketuk inisial namamu, lalu **Ganti kata sandi**. Minimal 8 karakter. Setelah diganti, perangkat lain yang sedang masuk otomatis keluar.',
+        'Di setiap kolom kata sandi ada **tombol mata** untuk menampilkan atau menyembunyikan isinya, berguna untuk memastikan tidak salah ketik. Kolomnya selalu mulai dalam keadaan tersembunyi.',
         'Ketuk **Keluar** setelah selesai kalau memakai perangkat bersama.',
         'Tombol ☾ dan ☀ di pojok atas mengganti tema gelap dan terang.',
         'Belum ada pemulihan kata sandi lewat email. Kalau lupa, minta pemilik aplikasi mereset kata sandimu.',

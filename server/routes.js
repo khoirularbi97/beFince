@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { q, pool } from './db.js';
 import * as R from './queries.js';
 import { sendCsv, sendPdf } from './export.js';
+import { aiRouter } from './ai/routes.js';
 import {
   HttpError, bad, wrap, monthOf, bounds, lastDay, shiftMonth, dateOf,
   amountOf, idOf, oneOf, rp, text, APP_TZ, timeExpr,
@@ -9,6 +10,7 @@ import {
 
 // Semua rute di sini sudah lewat requireAuth, jadi req.userId selalu ada.
 export const router = Router();
+router.use(aiRouter); // analisa keuangan: /insights dan /ai/*
 const TYPES = ['income', 'expense'];
 const KINDS = ['cash', 'bank', 'ewallet'];
 

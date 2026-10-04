@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { api, auth, setUnauthorizedHandler } from './api';
 import { useApi } from './hooks';
 import { PasswordDialog, TxDialog } from './dialogs';
@@ -13,9 +13,12 @@ import Tren from './pages/Tren';
 import Rencana from './pages/Rencana';
 import Kelola from './pages/Kelola';
 import Panduan from './pages/Panduan';
+import Analisa from './pages/Analisa';
+import { blocksSwipe, slideFrom, swipeDirection } from './swipe';
 
 const TABS = [['ringkasan', 'Ringkasan', Ringkasan], ['transaksi', 'Transaksi', Transaksi], ['dompet', 'Dompet', Dompet], ['tren', 'Tren', Tren], ['rencana', 'Rencana', Rencana]];
 const FAB_TABS = ['ringkasan', 'transaksi', 'dompet'];
+const TAB_KEYS = TABS.map((t) => t[0]);
 
 // Gerbang login: tampilkan aplikasi hanya kalau ada pengguna yang sudah masuk
 export default function App() {
@@ -40,7 +43,9 @@ function Shell({ user, logout }) {
   const [pw, setPw] = useState(false);
   const [view, setView] = useState(null); // halaman tambahan di luar tab: null | 'kelola' | 'panduan'
   const [guideAt, setGuideAt] = useState(null); // bagian panduan yang dibuka pertama
-  const [tab, setTab] = useState('ringkasan');
+  const [tab, setTabState] = useState('ringkasan');
+  const [slide, setSlide] = useState('');
+  const tabRef = useRef('ringkasan');
   const [month, setMonth] = useState(curMonth());
   const [ver, setVer] = useState(0);
   const [txDlg, setTxDlg] = useState({ open: false, tx: null });
@@ -55,6 +60,48 @@ function Shell({ user, logout }) {
     try { localStorage.setItem('theme', theme); } catch { /* penyimpanan tidak tersedia */ }
   }, [theme]);
   useEffect(() => { window.scrollTo(0, 0); }, [tab]);
+
+  // Pindah tab (ketuk menu atau geser). Arah animasi ditentukan dari urutan tab.
+  const setTab = (next) => {
+    if (next === tabRef.current) return;
+    setSlide(slideFrom(TAB_KEYS, tabRef.current, next));
+    tabRef.current = next;
+    setTabState(next);
+  };
+  const viewRef = useRef(null);
+  viewRef.current = view;
+  const setTabRef = useRef(setTab);
+  setTabRef.current = setTab;
+
+  // Geser kiri/kanan di halaman untuk pindah ke tab berikutnya atau sebelumnya
+  useEffect(() => {
+    let s = null;
+    const allowed = () => !viewRef.current
+      && !document.querySelector('dialog[open], #p-impor')              // ada jendela terbuka atau sedang impor mutasi
+      && !/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName || ''); // sedang mengetik
+    const start = (e) => {
+      if (e.touches.length !== 1 || !allowed() || blocksSwipe(e.target)) { s = null; return; }
+      s = { x: e.touches[0].clientX, y: e.touches[0].clientY, t: Date.now() };
+    };
+    const end = (e) => {
+      if (!s) return;
+      const t = e.changedTouches[0];
+      const dir = swipeDirection({ dx: t.clientX - s.x, dy: t.clientY - s.y, dt: Date.now() - s.t, startX: s.x, width: window.innerWidth });
+      s = null;
+      if (!dir) return;
+      const i = TAB_KEYS.indexOf(tabRef.current) + (dir === 'next' ? 1 : -1);
+      if (TAB_KEYS[i]) setTabRef.current(TAB_KEYS[i]);
+    };
+    const cancel = () => { s = null; };
+    document.addEventListener('touchstart', start, { passive: true });
+    document.addEventListener('touchend', end, { passive: true });
+    document.addEventListener('touchcancel', cancel, { passive: true });
+    return () => {
+      document.removeEventListener('touchstart', start);
+      document.removeEventListener('touchend', end);
+      document.removeEventListener('touchcancel', cancel);
+    };
+  }, []);
 
   const Page = TABS.find((t) => t[0] === tab)[2];
   const openTx = (tx = null) => setTxDlg({ open: true, tx });
@@ -87,9 +134,11 @@ function Shell({ user, logout }) {
         {meta.error && <p className="note out" role="alert">{meta.error}</p>}
         {meta.data && (view === 'kelola'
           ? <Kelola ver={ver} refresh={refresh} onClose={() => setView(null)} />
-          : view === 'panduan'
+          : view === 'analisa'
+            ? <Analisa month={month} ver={ver} refresh={refresh} onClose={() => setView(null)} />
+            : view === 'panduan'
             ? <Panduan key={guideAt || 'awal'} initial={guideAt} onClose={() => setView(null)} onNavigate={go} />
-            : <Page month={month} ver={ver} meta={meta.data} refresh={refresh} openTx={openTx} setTab={setTab} openGuide={openGuide} />)}
+            : <div className={'pg ' + slide} key={tab}><Page month={month} ver={ver} meta={meta.data} refresh={refresh} openTx={openTx} setTab={setTab} openGuide={openGuide} openAnalisa={() => setView('analisa')} /></div>)}
       </main>
 
       <nav aria-label="Menu utama">

@@ -6,7 +6,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "node tests/importer.test.mjs && node tests/money.test.mjs && node tests/guide.test.mjs && npm run test:statements",
+    "test": "node tests/importer.test.mjs && node tests/money.test.mjs && node tests/guide.test.mjs && node tests/swipe.test.mjs && npm run test:statements",
     "test:statements": "node tests/statements/gen.mjs && node tests/statements/run.mjs"
   },
   "dependencies": {

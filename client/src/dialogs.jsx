@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Dialog, Err, Field, MoneyInput } from './ui';
+import { Dialog, Err, Field, MoneyInput, PasswordInput } from './ui';
 import { api, auth } from './api';
 import { defaultDate, rp, rps, today } from './util';
 
@@ -232,9 +232,9 @@ function PasswordForm({ onClose }) {
   return (
     <form onSubmit={submit}>
       <h2>Ganti kata sandi</h2>
-      <input type="password" required maxLength="128" autoComplete="current-password" placeholder="Kata sandi saat ini" aria-label="Kata sandi saat ini" value={f.cur} onChange={(e) => set('cur', e.target.value)} />
-      <input type="password" required minLength="8" maxLength="128" autoComplete="new-password" placeholder="Kata sandi baru (minimal 8 karakter)" aria-label="Kata sandi baru" value={f.neu} onChange={(e) => set('neu', e.target.value)} />
-      <input type="password" required minLength="8" maxLength="128" autoComplete="new-password" placeholder="Ulangi kata sandi baru" aria-label="Ulangi kata sandi baru" value={f.neu2} onChange={(e) => set('neu2', e.target.value)} />
+      <PasswordInput required maxLength="128" autoComplete="current-password" placeholder="Kata sandi saat ini" aria-label="Kata sandi saat ini" value={f.cur} onChange={(e) => set('cur', e.target.value)} />
+      <PasswordInput required minLength="8" maxLength="128" autoComplete="new-password" placeholder="Kata sandi baru (minimal 8 karakter)" aria-label="Kata sandi baru" value={f.neu} onChange={(e) => set('neu', e.target.value)} />
+      <PasswordInput required minLength="8" maxLength="128" autoComplete="new-password" placeholder="Ulangi kata sandi baru" aria-label="Ulangi kata sandi baru" value={f.neu2} onChange={(e) => set('neu2', e.target.value)} />
       <Err msg={err} />
       <Actions busy={busy} label="Simpan kata sandi" onClose={onClose} />
     </form>

@@ -88,6 +88,33 @@ Di Render buka layanan `befince-api` → **Environment** → ubah `CLIENT_ORIGIN
 3. **Tutup pendaftaran**: di Render ubah `ALLOW_REGISTRATION` menjadi `false`. Setelah itu orang lain tidak bisa membuat akun di servermu, tapi kamu tetap bisa masuk.
 4. Opsional: ubah `AUTO_DB_INIT` menjadi `false`. Kalau suatu saat skema berubah dan kamu memperbarui kode, nyalakan lagi sementara.
 
+## 5b. Opsional: mengaktifkan analisa AI
+
+Analisa cepat (tanpa AI) sudah jalan tanpa langkah ini. Untuk analisa AI, pilih satu penyedia lalu isi di Render, di layanan backend, tab **Environment**,
+**+ Add Environment Variable**, lalu **Save and deploy**.
+
+**Pilihan gratis, tanpa kartu kredit: Groq (paling mudah)**
+
+1. Buka console.groq.com, daftar, lalu buka **API Keys** dan buat kunci. Salin kuncinya.
+2. Di Render tambahkan:
+
+| Variabel | Isi |
+|---|---|
+| `AI_ENABLED` | `true` |
+| `AI_PROVIDER` | `groq` |
+| `AI_API_KEY` | kunci dari Groq |
+| `AI_DAILY_LIMIT` | opsional, bawaan 5 per pengguna per hari |
+
+Model bawaan (`llama-3.3-70b-versatile`) dipakai otomatis. Kalau muncul error model tidak ditemukan, katalog Groq sudah berganti: lihat daftar model di situs Groq, lalu isi `AI_MODEL`.
+
+**Alternatif: Google Gemini.** Buat kunci di Google AI Studio, lalu isi `AI_PROVIDER=gemini` dan `AI_API_KEY`. Di tingkat gratis, Google boleh memakai prompt dan jawaban
+untuk memperbaiki produknya, jadi pertimbangkan itu untuk data keuangan.
+
+**Alternatif berbayar: Anthropic.** `AI_PROVIDER=anthropic` (bawaan) dan `AI_API_KEY` dari Claude Console. Pasang batas pengeluaran bulanan di konsolnya.
+
+Pastikan `AUTO_DB_INIT=true` pada deploy pertama versi ini, karena tabel dan kolom untuk analisa dibuat server saat menyala.
+Pengguna tetap harus memberi izin di dalam aplikasi sebelum datanya dikirim. Untuk mematikan AI, ubah `AI_ENABLED` menjadi `false`.
+
 ## 6. Daftar periksa setelah deploy
 
 - [ ] `URL-RENDER/api/health/db` menjawab `{"ok":true}`
@@ -136,5 +163,8 @@ Skrip mencetak kata sandi sementara dan mengeluarkan semua sesi lama. Masuk deng
 | "Terlalu banyak percobaan" | Pembatas login (30 kali per 15 menit per IP) | Tunggu 15 menit |
 | Vercel menampilkan 404 | Root Directory bukan `client` | Ubah di Settings, lalu Redeploy |
 | Jam transaksi selisih 1 sampai 2 jam | `APP_TZ` belum sesuai zona waktumu | Set `APP_TZ` di Render: `Asia/Jakarta` (WIB), `Asia/Makassar` (WITA), atau `Asia/Jayapura` (WIT) |
+| Analisa AI: "belum diaktifkan di server ini" | `AI_ENABLED` bukan `true` atau `ANTHROPIC_API_KEY` kosong | Isi di Render, lalu tunggu deploy ulang |
+| Analisa AI: "gagal atau tidak lolos pemeriksaan" | Kunci salah (log: `Kunci API ditolak`), model tidak tersedia, atau jawaban model ditolak pemeriksa | Cek log Render (`Analisa AI gagal:`); coba `AI_MODEL` lain; analisa cepat tetap tersedia |
+| Analisa AI: "Penyedia AI sedang membatasi permintaan" | Batas tingkat gratis penyedia (per menit atau per hari) | Tunggu beberapa menit; jatah harian pengguna tidak terpakai |
 | Semua pengguna keluar sendiri | `JWT_SECRET` diganti | Normal: masuk lagi. Jangan mengubahnya tanpa alasan |
 | Permintaan pertama lama sekali | Render dan Neon baru bangun | Normal di paket gratis, lihat bagian 7 |

@@ -1,0 +1,12 @@
+import { SWIPE, slideFrom, swipeDirection } from '../src/swipe.js';
+let pass = 0, fail = 0;
+const eq = (a, b, m) => { const ok = JSON.stringify(a) === JSON.stringify(b); console.log((ok ? 'PASS ' : 'FAIL ') + m + (ok ? '' : `\n   dapat: ${JSON.stringify(a)}\n   harusnya: ${JSON.stringify(b)}`)); ok ? pass++ : fail++; };
+const d = (o) => swipeDirection({ dx: 0, dy: 0, dt: 200, startX: 180, width: 360, ...o });
+eq([d({ dx: -120 }), d({ dx: 120 })], ['next', 'prev'], 'geser kiri = tab berikutnya, geser kanan = tab sebelumnya');
+eq([d({ dx: -SWIPE.min + 1 }), d({ dx: -SWIPE.min })], [null, 'next'], 'jarak di bawah batas minimal diabaikan, tepat di batas diterima');
+eq([d({ dx: -100, dy: 80 }), d({ dx: -100, dy: 50 }), d({ dx: -100, dy: 0 })], [null, 'next', 'next'], 'gerakan miring (hampir diagonal) diabaikan, yang jelas horizontal diterima');
+eq([d({ dx: -30, dy: 200 }), d({ dx: 0, dy: -300 })], [null, null], 'menggulir ke atas/bawah tidak memindahkan tab');
+eq([d({ dx: -120, dt: SWIPE.maxTime }), d({ dx: -120, dt: SWIPE.maxTime + 1 })], ['next', null], 'geser yang terlalu lama (menyeret pelan) diabaikan');
+eq([d({ dx: -120, startX: SWIPE.edge - 1 }), d({ dx: 120, startX: 360 - SWIPE.edge + 1 }), d({ dx: -120, startX: SWIPE.edge })], [null, null, 'next'], 'sentuhan dari tepi layar dibiarkan untuk gestur kembali milik HP');
+eq([slideFrom(['a', 'b', 'c'], 'a', 'c'), slideFrom(['a', 'b', 'c'], 'c', 'b'), slideFrom(['a', 'b', 'c'], 'b', 'c')], ['from-right', 'from-left', 'from-right'], 'arah animasi mengikuti urutan tab');
+console.log(`\n${pass} lolos, ${fail} gagal`); process.exit(fail ? 1 : 0);

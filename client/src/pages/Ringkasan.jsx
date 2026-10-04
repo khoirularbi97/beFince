@@ -6,9 +6,10 @@ import TxList from '../TxList';
 import { Err, Loading, tilt } from '../ui';
 import { rp } from '../util';
 
-export default function Ringkasan({ month, ver, setTab, openGuide }) {
+export default function Ringkasan({ month, ver, setTab, openGuide, openAnalisa }) {
   const rep = useApi(() => api.report(month), [month, ver]);
   const recent = useApi(() => api.transactions({ month, limit: 5 }), [month, ver]);
+  const ins = useApi(() => api.insights(month), [month, ver]);
   const [busy, setBusy] = useState('');
   const [err, setErr] = useState('');
   const r = rep.data;
@@ -72,6 +73,18 @@ export default function Ringkasan({ month, ver, setTab, openGuide }) {
           <button className="ghost" onClick={() => openGuide('mulai')}>Lihat panduan mulai cepat</button>
         </section>
       )}
+
+      <section className="card" aria-label="Analisa cepat">
+        <h2>Analisa cepat</h2>
+        {!ins.data ? <Loading err={ins.error} /> : (
+          <>
+            <p style={{ margin: '0 0 6px' }}>{ins.data.report.headline}</p>
+            {ins.data.enough && ins.data.report.findings[0] && <p className="note" style={{ margin: 0 }}>{ins.data.report.findings[0].title}: {ins.data.report.findings[0].detail}</p>}
+            {!ins.data.enough && <p className="note" style={{ margin: 0 }}>Catat atau impor lebih banyak transaksi supaya analisa bermakna.</p>}
+            <button className="ghost" style={{ marginTop: 10, width: '100%' }} onClick={openAnalisa}>Lihat analisa dan saran</button>
+          </>
+        )}
+      </section>
 
       <section className="card" aria-label="Transaksi terbaru">
         <h2>Transaksi terbaru</h2>
